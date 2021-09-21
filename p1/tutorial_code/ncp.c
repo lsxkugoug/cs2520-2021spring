@@ -32,6 +32,8 @@ int main(int argc, char **argv) { /* udp related */
     int seq = 0;
     struct timeval        last_recv_time = {0, 0};
     struct timeval nowtime = {0,0};
+    /* file related */
+    // FILE *fr;      /* Pointer to source file */
 
     /* Get command line argument: <dest_file_name>@<ip_address>:<port> */
     Usage(argc, argv);
@@ -56,6 +58,11 @@ int main(int argc, char **argv) { /* udp related */
     send_addr.sin_addr.s_addr = host_num;
     send_addr.sin_port = htons(Port);
 
+    /* Open the source file for reading */
+    // if ((fr = fopen(argv[1], "r")) == NULL) {
+    //     perror("fopen");
+    //     exit(0);
+    // }
     printf("Opened %s for reading...\n", argv[1]);
 
     /* Set up mask for file descriptors we want to read from */
@@ -64,6 +71,9 @@ int main(int argc, char **argv) { /* udp related */
     FD_SET(sock, &read_mask);
     FD_SET(fd, &read_mask);
 
+    /* Send the file name to Receiver */
+    // memcpy(mess_buf, Dest_file_name, strlen(Dest_file_name) + 1);
+
     /* 0： have not transmitted the filename to receiver
      * 1:  Already transmitted the filename to receiver
      * */
@@ -71,14 +81,18 @@ int main(int argc, char **argv) { /* udp related */
 
     seq = 0; // seq: index of message packet
     for (;;) {
+
+        /* Read in a chunk of the file, firstly read the name, then the file */
+
+
         /* (Re)set mask and timeout */
         mask = read_mask;
 
         /* Wait for message or timeout */
         num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         if (num > 0) {
-            
-            while(head!=tail || nowtime.tv_sec-last_recv_time.tv_sec > 1){ // not window block or time out
+            // while(head!=tail || nowtime.tv_sec-last_recv_time.tv_sec > 1)
+            while(1){ 
                 if(nowtime.tv_sec-last_recv_time.tv_sec > 1){ //TODO send all the packages of the windows
                     for(int i = 0; i < 101; i++){
                         if(i!=head)
@@ -137,6 +151,8 @@ int main(int argc, char **argv) { /* udp related */
                         /* Fill in header info */
                         hdr->seq = seq++;
                         gettimeofday(&hdr->ts, NULL);
+                        hdr->cack = 1; // It does not matter in header
+                        // hdr->nack = 1;
 
                         /* Send the message */
                         sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
