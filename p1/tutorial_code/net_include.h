@@ -16,14 +16,15 @@
 #include <errno.h>
 
 #define MAX_MESS_LEN 1400
-
-
+#define WINDOW_SIZE 100
 /* Only used in udp_server_hdr.c / udp_client_hdr.c to give an example of how
  * to include header data in our messages. Note that technically we should only
  * use fixed-width types in the header to ensure the header size is the same on
  * different architectures, but for assignments in this course, you don't need
  * to worry about portability across different architectures */
 typedef struct dummy_uhdr {
+    int cack;
+    int nack[5];
     int seq;
     struct timeval ts;
 } uhdr;
