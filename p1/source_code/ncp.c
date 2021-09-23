@@ -123,7 +123,7 @@ int main(int argc, char **argv) { /* udp related */
 
               /* When Cumulative ACK is below than head,We may lose some packet. Check Nack array,and Resend Message */
               if(received_ack < head){
-                  for(int i =0;i<5;i++){
+                  for(int i =0;i<NACK_SIZE;i++){
                       if(hdr->nack[i]<0){
                           break;
                       }else{
@@ -168,8 +168,8 @@ int main(int argc, char **argv) { /* udp related */
                           tail++;
 
                           // Reset the Timer
-                          timeout.tv_sec = 10;
-                          timeout.tv_usec = 0;
+                          timeout.tv_sec = 0;
+                          timeout.tv_usec = 100;
                       }
                   }
               }          
