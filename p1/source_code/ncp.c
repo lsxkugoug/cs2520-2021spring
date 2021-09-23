@@ -156,7 +156,7 @@ int main(int argc, char **argv) { /* udp related */
                           }
 
                           // Store Message in window sizeof(mess_buf) vs sizeof(uhdr)+strlen(data_buf)
-                          memcpy(window[(tail + 1) % WINDOW_SIZE], mess_buf, sizeof(uhdr)+strlen(data_buf));
+                          memcpy(window[(tail + 1) % WINDOW_SIZE], mess_buf, sizeof(mess_buf));
 
                           hdr->seq = seq++;
 
@@ -168,8 +168,8 @@ int main(int argc, char **argv) { /* udp related */
                           tail++;
 
                           // Reset the Timer
-                          timeout.tv_sec = 0;
-                          timeout.tv_usec = 100;
+                          timeout.tv_sec = 1;
+                          timeout.tv_usec = 0;
                       }
                   }
               }          
