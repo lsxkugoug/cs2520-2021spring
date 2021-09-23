@@ -6,6 +6,7 @@ static int Cmp_time(struct timeval t1, struct timeval t2);
 static const struct timeval Zero_time = {0, 0};
 static char* Source_file_name;
 static char* Dest_file_name;
+static int Loss_rate;
 static int Port;
 static char *Receiver_IP;
 
@@ -21,7 +22,6 @@ int main(int argc, char **argv) { /* udp related */
     int sock;
     fd_set mask;
     fd_set read_mask;
-
     int bytes;
     int num;
 
@@ -81,13 +81,13 @@ int main(int argc, char **argv) { /* udp related */
      * Secondly, Read data from file and fill in the Window ,then send the whole window */
     strcpy(data_buf, Source_file_name);
     hdr->seq = seq++;
-    sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+    sendto_dbg(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
            (struct sockaddr *) &send_addr, sizeof(send_addr));
     for (int i = head; i <= tail; i++) {
         bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr));
         hdr->seq = seq++;
         // Send Message
-        sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+        sendto_dbg(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
                (struct sockaddr *) &send_addr, sizeof(send_addr));
         // Store Message in window
         memcpy(window[i % WINDOW_SIZE], mess_buf, sizeof(mess_buf));
@@ -134,7 +134,7 @@ int main(int argc, char **argv) { /* udp related */
                             break;
                         } else {
                             if (head <= hdr->nack[i] && hdr->nack[i] <= tail) {
-                                sendto(sock, window[hdr->nack[i] % WINDOW_SIZE],
+                                sendto_dbg(sock, window[hdr->nack[i] % WINDOW_SIZE],
                                        sizeof(window[hdr->nack[i] % WINDOW_SIZE]), 0,
                                        (struct sockaddr *) &send_addr, sizeof(send_addr));
                             }
@@ -167,7 +167,7 @@ int main(int argc, char **argv) { /* udp related */
                             memcpy(window[(tail + 1) % WINDOW_SIZE], mess_buf, sizeof(mess_buf));
 
                             // Send Message
-                            sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+                            sendto_dbg(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
                                    (struct sockaddr *) &send_addr, sizeof(send_addr));
 
                             head++;
@@ -193,7 +193,7 @@ int main(int argc, char **argv) { /* udp related */
             /* Time out, Resend everything in buffer to Receiver */
             for (int i = head; i <= tail; i++) {
                 // Send Message
-                sendto(sock, window[i % WINDOW_SIZE], sizeof(window[i % WINDOW_SIZE]), 0,
+                sendto_dbg(sock, window[i % WINDOW_SIZE], sizeof(window[i % WINDOW_SIZE]), 0,
                        (struct sockaddr *) &send_addr, sizeof(send_addr));
             }
         }
@@ -204,13 +204,15 @@ int main(int argc, char **argv) { /* udp related */
 
 /* Read commandline arguments <dest_file_name>@<ip_address>:<port>  */
 static void Usage(int argc, char *argv[]) {
-    if (argc != 3){
-        printf("Usage: ncp <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
+    if (argc != 4){
+        printf("Usage: ncp <loss_rate> <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
         exit(0);
     }
-    Source_file_name = argv[1];
+    Loss_rate = atoi(argv[1]);
+    sendto_dbg_init(Loss_rate);
+    Source_file_name = argv[2];
     char* delim = "@:";
-    Dest_file_name = strtok(argv[2], delim);
+    Dest_file_name = strtok(argv[3], delim);
     Receiver_IP = strtok(NULL,delim);
     Port = atoi(strtok(NULL,delim));
     printf("Sending to %s at port %d\n", Receiver_IP, Port);
