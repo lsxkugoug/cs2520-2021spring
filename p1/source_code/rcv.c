@@ -4,7 +4,7 @@ static void Usage(int argc, char *argv[]);
 static void Print_help();
 static int Cmp_time(struct timeval t1, struct timeval t2);
 static const struct timeval Zero_time = {0, 0};
-
+static int Loss_rate;
 static int Port;
 
 int main(int argc, char *argv[])
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
                             for (int i = 0; i < NACK_SIZE; i++) { echo_hdr->nack[i] = -1; } //-1 indicates no missing packets.
 
                             /* Send Message to sender */
-                            sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
+                            sendto_dbg(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
                                    (struct sockaddr *) &from_addr, sizeof(from_addr));
                         } else {
                             /* Subcase 2. If there exist buffer in window
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
                             for (int i = 0; i < NACK_SIZE; i++) { echo_hdr->nack[i] = -1; } //-1 indicates no missing packets.
 
                             /* Send Message to sender */
-                            sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
+                            sendto_dbg(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
                                    (struct sockaddr *) &from_addr,
                                    sizeof(from_addr));
                         }
@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
                                 echo_hdr->cack = C_ack;
 
                                 /* Send message to sender*/
-                                sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
+                                sendto_dbg(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
                                        (struct sockaddr *) &from_addr,
                                        sizeof(from_addr));
                             }
@@ -285,17 +285,20 @@ int main(int argc, char *argv[])
 
 
 /* Read commandline arguments */
+/* rcv <loss_rate_percent> <port> */
 static void Usage(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc != 3)
+    {
+        Print_help();
+    }
+    Loss_rate = atoi(argv[1]);
+    sendto_dbg_init(Loss_rate);
+    if (sscanf(argv[2], "%d", &Port) != 1)
     {
         Print_help();
     }
 
-    if (sscanf(argv[1], "%d", &Port) != 1)
-    {
-        Print_help();
-    }
 }
 
 static void Print_help()
