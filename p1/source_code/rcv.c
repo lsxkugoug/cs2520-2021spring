@@ -3,7 +3,6 @@
 static void Usage(int argc, char *argv[]);
 static void Print_help();
 static int Cmp_time(struct timeval t1, struct timeval t2);
-static void Store_Message_in_Window(char Message[], int index, char window[WINDOW_SIZE][MAX_MESS_LEN]);
 static const struct timeval Zero_time = {0, 0};
 
 static int Port;
@@ -143,15 +142,17 @@ int main(int argc, char *argv[])
                     /*Case 1. Message->seq = Cumulative ACK+1
                      *  Receiver get the expected message
                      */
-                    if (hdr->seq == C_ack + 1) {
+                    if (hdr->seq == C_ack+1) {
                         /* Subcase 1. If no buffer in window.
                          * C_ack ++, write data_buff into file, send Cumulative ACK to sender
-                         *  Receiver :  C_ack ( window:) C_ack+1 [C_ack+2, ....... C_ack+Window_size]
+                         *  Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                          */
 
                         if (buffersize == 0) {
                             puts("S1");
                             C_ack++;
+
+                            /* Write Data into File*/
                             fprintf(fw, "%s", data_buf);
                             bzero(data_buf, sizeof(data_buf));
 
@@ -165,15 +166,16 @@ int main(int argc, char *argv[])
                         } else {
                             /* Subcase 2. If there exist buffer in window
                              * Find the Largest C_ack, then write all buffered data. send Cumulative ACK to sender
-                             * Receiver :  C_ack ( window:) C_ack+1[C_ack+1+1, ....... C_ack+1+Window_size]
+                             * Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                              */
                             puts("S2");
                             fprintf(fw, "%s", data_buf);
                             bzero(data_buf, sizeof(data_buf));
                             int temp = C_ack;
-                            C_ack = C_ack +1;
+                            C_ack ++;
 
-                            for(int j = temp+2;j<(temp+1+WINDOW_SIZE);j++){
+                            /*Search the Buffer window Find the largest ACK*/
+                            for(int j = temp+2;j<(temp+1+WINDOW_SIZE) && buffersize>0 ;j++){
                                 if(buffer[j%WINDOW_SIZE]==1){
                                     C_ack++;
                                     buffer[j%WINDOW_SIZE] = 0;
@@ -208,29 +210,33 @@ int main(int argc, char *argv[])
                          *  Delayed message, drop it.
                          *  or Message->seq> Cumulative ACK +Window Size
                          *  Drop it
+                         * Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                          */
                         if(hdr->seq<C_ack+1){
                             puts("S3");
                         }
-
-                        /*C_ack ( window:) C_ack+1 [ C_ack+2, ....... C_ack+Window_size]*/
+                        if(hdr->seq>C_ack+WINDOW_SIZE+1){
+                            puts("S5");
+                        }
                         /* Subcase 2.Message->seq > Cumulative ACK+1
                          * If seq in buffer, then drop it
                          * Otherwise, put data into buffer, search for the last 5 missing packet and put them into Nack array.
                          *  Then Send the message to sender
+                         *  Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                          */
-                        if (hdr->seq > (C_ack + 1) && hdr->seq < (C_ack + 1 + WINDOW_SIZE)) {
+                        if (hdr->seq >= (C_ack + 2) && hdr->seq <= (C_ack + 1 + WINDOW_SIZE)) {
                             puts("S4");
                             if (buffer[hdr->seq % WINDOW_SIZE] == 0) {
                                 buffer[hdr->seq % WINDOW_SIZE] = 1;
                                 buffersize++;
 
                                 /* Store message in window */
-                                Store_Message_in_Window(mess_buf, hdr->seq, window);
+                                memcpy(window[hdr->seq % WINDOW_SIZE],mess_buf, sizeof(mess_buf));
 
                                 /* Fill in the header */
                                 for (int j = 0; j < NACK_SIZE; j++) { echo_hdr->nack[j] = -1; }
-                                for (int j = hdr->seq-1, i = 0; (j>C_ack+1 )&& (i<NACK_SIZE); i++){
+                                /* Find the missing packet and send Nack*/
+                                for (int j = hdr->seq-1, i = 0; (j>=C_ack+1 )&& (i<NACK_SIZE); i++){
                                     if(buffer[j%WINDOW_SIZE] ==0){
                                         printf("%d ",j);
                                         echo_hdr->nack[i] = j;
@@ -305,12 +311,6 @@ static int Cmp_time(struct timeval t1, struct timeval t2)
         return 0;
 }
 
-/* Store the message into Window */
-static void Store_Message_in_Window(char Message[], int index, char window[WINDOW_SIZE][MAX_MESS_LEN]){
-    // Calculate the index for window
-    int index_window = index%WINDOW_SIZE;
-    memcpy(window[index_window],Message, sizeof(Message));
-}
 
 
 
