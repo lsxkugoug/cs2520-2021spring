@@ -3,6 +3,6 @@
 # except for dir
 !*/
 # .c
-!*./c
+!*.c
 # makefile
 !Makefile
