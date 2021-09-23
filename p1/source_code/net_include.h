@@ -15,7 +15,7 @@
 #include<sys/stat.h>
 #include <errno.h>
 
-#define MAX_MESS_LEN 200
+#define MAX_MESS_LEN 2000
 #define WINDOW_SIZE 100
 #define NACK_SIZE 10
 /* Only used in udp_server_hdr.c / udp_client_hdr.c to give an example of how
