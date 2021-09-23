@@ -1,1 +1,8 @@
-.vscode/*
+#ignore all files
+*
+# except for dir
+!*/
+# .c
+!*./c
+# makefile
+!Makefile
