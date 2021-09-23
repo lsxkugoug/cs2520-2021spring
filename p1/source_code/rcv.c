@@ -138,7 +138,6 @@ int main(int argc, char *argv[])
                     /*Receive the name of file*/
                     // Todo change the file name
                 }else {
-
                     /*Case 1. Message->seq = Cumulative ACK+1
                      *  Receiver get the expected message
                      */
@@ -147,7 +146,6 @@ int main(int argc, char *argv[])
                          * C_ack ++, write data_buff into file, send Cumulative ACK to sender
                          *  Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                          */
-
                         if (buffersize == 0) {
                             puts("S1");
                             C_ack++;
@@ -175,7 +173,8 @@ int main(int argc, char *argv[])
                             C_ack ++;
 
                             /*Search the Buffer window Find the largest ACK*/
-                            for(int j = temp+2;j<(temp+1+WINDOW_SIZE) && buffersize>0 ;j++){
+                            for(int j = temp+2; j<(temp+1+WINDOW_SIZE) && buffersize>0 ;j++){
+                                printf("Buffer, %d \n",buffer[j%WINDOW_SIZE] );
                                 if(buffer[j%WINDOW_SIZE]==1){
                                     C_ack++;
                                     buffer[j%WINDOW_SIZE] = 0;
@@ -227,6 +226,7 @@ int main(int argc, char *argv[])
                         if (hdr->seq >= (C_ack + 2) && hdr->seq <= (C_ack + 1 + WINDOW_SIZE)) {
                             puts("S4");
                             if (buffer[hdr->seq % WINDOW_SIZE] == 0) {
+
                                 buffer[hdr->seq % WINDOW_SIZE] = 1;
                                 buffersize++;
 
@@ -235,8 +235,15 @@ int main(int argc, char *argv[])
 
                                 /* Fill in the header */
                                 for (int j = 0; j < NACK_SIZE; j++) { echo_hdr->nack[j] = -1; }
-                                /* Find the missing packet and send Nack*/
-                                for (int j = hdr->seq-1, i = 0; (j>=C_ack+1 )&& (i<NACK_SIZE); i++){
+
+                                /* First ask for the one we expect which is C_ack+1*/
+                                echo_hdr->nack[0] = C_ack+1;
+                                printf("%d ",C_ack+1);
+
+                                /* Then search the buffer and find the missing packet
+                                 * from both side (head and tail)????
+                                 * and send Nack*/
+                                for (int j = hdr->seq-1, i = 1; (j>=C_ack+2 )&& (i<NACK_SIZE); i++){
                                     if(buffer[j%WINDOW_SIZE] ==0){
                                         printf("%d ",j);
                                         echo_hdr->nack[i] = j;
@@ -275,6 +282,7 @@ int main(int argc, char *argv[])
     fclose(fw);
     return 0;
 }
+
 
 /* Read commandline arguments */
 static void Usage(int argc, char *argv[])
