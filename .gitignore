@@ -8,3 +8,5 @@
 !*.h
 # makefile
 !Makefile
+#py
+!*.py
