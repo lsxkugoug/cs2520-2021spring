@@ -4,5 +4,7 @@
 !*/
 # .c
 !*.c
+#.h
+!*.h
 # makefile
 !Makefile
