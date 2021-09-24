@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
         int all_byte = 0;
         int bytes_sent = read(fd, mess_buf, sizeof(mess_buf));
         ret = send(sock, &mess_buf, bytes_sent, 0);
-         printf("%s", mess_buf);
         if (ret < 0) {
             perror("tcp_client: error in sending\n");
             exit(1);
@@ -81,7 +80,13 @@ int main(int argc, char *argv[])
 /* Read commandline arguments */
 static void Usage(int argc, char *argv[]) {
     if (argc != 3){
-        printf("Usage: t_ncp <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
+        
+        
+        
+        
+        
+        
+        ("Usage: t_ncp <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
         exit(0);
     }
     Source_file_name = argv[1];
