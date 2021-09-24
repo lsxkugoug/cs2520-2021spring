@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
 
         num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         if (num > 0) {
+	gettimeofday(&last, NULL);
             /* Accept a new connection */
             if (FD_ISSET(listen_sock, &mask)) {
                 Recv_socks = accept(listen_sock, 0, 0) ;
