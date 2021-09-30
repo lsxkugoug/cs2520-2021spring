@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include <stdlib.h>
-
+#include "sendto_dbg.h"
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -14,11 +14,11 @@
 #include<sys/types.h>
 #include<sys/stat.h>
 #include <errno.h>
-#include "sendto_dbg.h"
 
 #define MAX_MESS_LEN 2000
 #define WINDOW_SIZE 100
-#define NACK_SIZE 10
+#define NACK_SIZE 3
+#define TMB 10000000
 /* Only used in udp_server_hdr.c / udp_client_hdr.c to give an example of how
  * to include header data in our messages. Note that technically we should only
  * use fixed-width types in the header to ensure the header size is the same on
