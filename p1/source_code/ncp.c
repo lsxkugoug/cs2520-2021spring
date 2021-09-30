@@ -24,7 +24,10 @@ int main(int argc, char **argv) { /* udp related */
     fd_set read_mask;
     int bytes;
     int num;
-
+    int totalbyte = 0;
+    int allbytes = 0;
+    int i_TMB = 0;
+    int ii_TMB = 0;
     char mess_buf[MAX_MESS_LEN];
     uhdr *hdr = (uhdr *) mess_buf;
     char *data_buf = &mess_buf[sizeof(uhdr)];
@@ -33,6 +36,11 @@ int main(int argc, char **argv) { /* udp related */
     struct timeval last_recv_time = {0, 0};
     struct timeval nowtime = {0, 0};
     struct timeval timeout;
+    struct timeval TMBtime ;
+    struct  timeval now;
+    struct timeval initialtime = {0,0};
+    struct  timeval finishtime = {0,0};
+    struct timeval diff_time;
     char window[WINDOW_SIZE][MAX_MESS_LEN];
     int head = 1;
     int tail = WINDOW_SIZE;
@@ -64,6 +72,8 @@ int main(int argc, char **argv) { /* udp related */
 
     /* Set up mask for file descriptors we want to read from */
     int fd = open(Source_file_name, O_RDONLY | O_CREAT);
+    gettimeofday(&initialtime, NULL);
+    gettimeofday(&TMBtime, NULL);
     FD_ZERO(&read_mask);
     FD_SET(sock, &read_mask);
     FD_SET(fd,&read_mask);
@@ -79,12 +89,30 @@ int main(int argc, char **argv) { /* udp related */
 
     /* Initialization : First send the file name
      * Secondly, Read data from file and fill in the Window ,then send the whole window */
-    strcpy(data_buf, Source_file_name);
+    strcpy(data_buf, Dest_file_name);
     hdr->seq = seq++;
-    sendto_dbg(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+    sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
            (struct sockaddr *) &send_addr, sizeof(send_addr));
+
     for (int i = head; i <= tail; i++) {
         bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr));
+
+        totalbyte+= bytes;
+        if(totalbyte > TMB){
+            i_TMB++;
+            totalbyte =  totalbyte -TMB;
+            gettimeofday(&now, NULL);
+            timersub(&now, &TMBtime, &diff_time);
+            gettimeofday(&TMBtime, NULL);
+            printf("Total data I send so far : %lf MB\n",(totalbyte/1000000.0)+i_TMB*10);
+            printf("Average Sending Rate: %lf MB per s\n", 10 / (diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
+        }
+        allbytes +=bytes;
+        if(allbytes>TMB){
+            allbytes = allbytes -TMB;
+            ii_TMB++;
+        }
+
         hdr->seq = seq++;
         // Send Message
         sendto_dbg(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
@@ -99,16 +127,12 @@ int main(int argc, char **argv) { /* udp related */
         mask = read_mask;
 
         timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
+        timeout.tv_usec = 50000;
 
         /* Wait for message or timeout */
         num = select(FD_SETSIZE, &mask, NULL, NULL, &timeout);
-        printf("Num,%d , EOF %d \n",num,eof);
 
-        /* No Response From Receiver */
-
-        /* Receive Response from Receiver  (num = 1  eof=1)=> receiver  num==0 No receiver, No file  */
-        /* (eof==1&&num==1)  num= 1 eof = 0*/
+        /* Receive Response from Receiver*/
         if(num==2){
             if (FD_ISSET(sock, &mask)) {
                 from_len = sizeof(from_addr);
@@ -116,27 +140,45 @@ int main(int argc, char **argv) { /* udp related */
                                  (struct sockaddr *) &from_addr,
                                  &from_len);
                 from_ip = from_addr.sin_addr.s_addr;
-                printf("Receive ACK from receiver:%d, head:%d,tail:%d\n", hdr->cack, head, tail);
+
+                printf("Head %d, Tail %d \n",head,tail); // Todo
+                printf("Response ACK %d \n",hdr->cack); //Todo
 
                 /* Check whether we finish sending the file*/
                 if (eof == 1 && (hdr->cack >= tail || head >= tail)) {
-                    printf("Finish Sending the file ....");
+                    printf("Finish Sending the file ....\n");
+                    gettimeofday(&finishtime, NULL);
+                    timersub(&finishtime, &initialtime, &diff_time);
+                    printf("Sending time  %lf s.\n",
+                           diff_time.tv_sec + (diff_time.tv_usec / 1000000.0));
+                    printf("Total data I send : %lf MB\n",(totalbyte/1000000.0)+i_TMB*10);
+                    printf("Total Bytes including junk bytes I send : %lf MB\n",allbytes/1000000.0+ii_TMB*10);
+                    printf("Sending Rate: %lf MB per s\n", ((totalbyte/1000000.0)+i_TMB*10)/ (diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
                     close(fd);
                     exit(0);
                 }
 
                 int received_ack = hdr->cack;
 
-                /* When Cumulative ACK is below than head,We may lose some packet. Check Nack array,and Resend Message */
-                if (received_ack < head) {
+                if(received_ack <head -1){
+                    /* Ignore, since we already received ACK =  head -1 */
+                }
+                /* When Cumulative ACK is equal to head -1,We may lose some packet. Check Nack array,and Resend Message */
+                else if (received_ack == head -1) {
                     for (int i = 0; i < NACK_SIZE; i++) {
                         if (hdr->nack[i] < 0) {
                             break;
                         } else {
+                            printf("Response Nack %d \n",hdr->nack[i]);// Todo
                             if (head <= hdr->nack[i] && hdr->nack[i] <= tail) {
                                 sendto_dbg(sock, window[hdr->nack[i] % WINDOW_SIZE],
                                        sizeof(window[hdr->nack[i] % WINDOW_SIZE]), 0,
                                        (struct sockaddr *) &send_addr, sizeof(send_addr));
+
+                                allbytes += 8*strlen(window[hdr->nack[i] % WINDOW_SIZE]);
+                                if(allbytes>TMB){
+                                    allbytes = allbytes-TMB;
+                                    ii_TMB++;}
                             }
                         }
                     }
@@ -154,16 +196,29 @@ int main(int argc, char **argv) { /* udp related */
                         for (int i = head;  i < received_ack + 1; i++) {
 
                             bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr));
-
+                            totalbyte += bytes;
+                            allbytes +=bytes;
+                            if(allbytes>TMB){
+                                allbytes = allbytes -TMB;
+                                ii_TMB++;}
+                            if(totalbyte > TMB){
+                                i_TMB++;
+                                totalbyte =  totalbyte -TMB;
+                                gettimeofday(&now, NULL);
+                                timersub(&now, &TMBtime, &diff_time);
+                                gettimeofday(&TMBtime, NULL);
+                                printf("Total data I send so far : %lf MB\n",(totalbyte/1000000.0)+i_TMB*10);
+                                printf("Average Sending Rate: %lf MB per s\n", 10 / (diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
+                            }
                             // Check whether Read the end of the file
                             if (bytes < sizeof(mess_buf) - sizeof(uhdr)) {
                                 printf("Finished Reading .\n");
                                 eof = 1;
-                               // close(fd);
                             }
+
                             hdr->seq = seq++;
 
-                            // Store Message in window sizeof(mess_buf) vs sizeof(uhdr)+strlen(data_buf)
+                            // Store Message in window
                             memcpy(window[(tail + 1) % WINDOW_SIZE], mess_buf, sizeof(mess_buf));
 
                             // Send Message
@@ -186,7 +241,16 @@ int main(int argc, char **argv) { /* udp related */
                 }
             }
         }else{
+            /* No Response From Receiver */
             if (head == tail) {
+                printf("Finish Sending the file ....\n");
+                gettimeofday(&finishtime, NULL);
+                timersub(&finishtime, &initialtime, &diff_time);
+                printf("Sending time  %lf s.\n",
+                       diff_time.tv_sec + (diff_time.tv_usec / 1000000.0));
+                printf("Total Bytes I send : %lf MB\n",totalbyte/1000000.0+i_TMB*10);
+                printf("Total Bytes including junk bytes I send : %lf MB\n",allbytes/1000000.0+ii_TMB*10);
+                printf("Sending Rate: %lf MB/s", (totalbyte/1000000.0+i_TMB*10)/(diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
                 close(fd);
                 exit(0);
             }
@@ -195,24 +259,29 @@ int main(int argc, char **argv) { /* udp related */
                 // Send Message
                 sendto_dbg(sock, window[i % WINDOW_SIZE], sizeof(window[i % WINDOW_SIZE]), 0,
                        (struct sockaddr *) &send_addr, sizeof(send_addr));
+
+                allbytes += 8*strlen(window[i % WINDOW_SIZE]);
+                if(allbytes>TMB){
+                    allbytes = allbytes-TMB;
+                    ii_TMB++;}
             }
         }
-
     }
     return 0;
 }
 
-/* Read commandline arguments <dest_file_name>@<ip_address>:<port>  */
+
 static void Usage(int argc, char *argv[]) {
-    if (argc != 4){
-        printf("Usage: ncp <loss_rate> <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
+    if (argc != 5){
+        printf("Usage: ncp <loss_rate> <env> <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
         exit(0);
     }
     Loss_rate = atoi(argv[1]);
+    printf("We are in %s network...",argv[2]);
     sendto_dbg_init(Loss_rate);
-    Source_file_name = argv[2];
+    Source_file_name = argv[3];
     char* delim = "@:";
-    Dest_file_name = strtok(argv[3], delim);
+    Dest_file_name = strtok(argv[4], delim);
     Receiver_IP = strtok(NULL,delim);
     Port = atoi(strtok(NULL,delim));
     printf("Sending to %s at port %d\n", Receiver_IP, Port);
