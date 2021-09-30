@@ -163,8 +163,8 @@ int main(int argc, char *argv[])
                             /*Todo*/
                             lastACK = C_ack ;
                             NACKTime = 0;
-                            /*lsx*/
-                            totalbytes += 8*(sizeof(mess_buf)-sizeof(uhdr));
+                            /*lsxdo*/
+                            totalbytes += (sizeof(mess_buf)-sizeof(uhdr));
                             if(totalbytes > TMB){
                                 totalbytes = totalbytes -TMB;
                                 i_TMB++;

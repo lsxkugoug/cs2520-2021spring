@@ -95,7 +95,8 @@ int main(int argc, char **argv) { /* udp related */
            (struct sockaddr *) &send_addr, sizeof(send_addr));
 
     for (int i = head; i <= tail; i++) {
-        bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr));
+        bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr)-1);
+        data_buf[bytes] = '\0';
 
         totalbyte+= bytes;
         if(totalbyte > TMB){
@@ -195,7 +196,8 @@ int main(int argc, char **argv) { /* udp related */
                          * */
                         for (int i = head;  i < received_ack + 1; i++) {
 
-                            bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr));
+                            bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr)-1);
+                            data_buf[bytes] = '\0';
                             totalbyte += bytes;
                             allbytes +=bytes;
                             if(allbytes>TMB){
@@ -211,7 +213,7 @@ int main(int argc, char **argv) { /* udp related */
                                 printf("Average Sending Rate: %lf MB per s\n", 10 / (diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
                             }
                             // Check whether Read the end of the file
-                            if (bytes < sizeof(mess_buf) - sizeof(uhdr)) {
+                            if (bytes < sizeof(mess_buf) - sizeof(uhdr)-1) {
                                 printf("Finished Reading .\n");
                                 eof = 1;
                             }
