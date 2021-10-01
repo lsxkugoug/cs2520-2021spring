@@ -91,27 +91,28 @@ int main(int argc, char *argv[])
     int have_filename = 0;
     for (;;)
     {
-        printf("%d \n",totalbytes);
         /* (Re)set mask and timeout */
         mask = read_mask;
-        timeout.tv_sec = 2;
-        timeout.tv_usec = 0;
+        timeout.tv_sec =  RCV_T_SEC;
+        timeout.tv_usec = RCV_T_USEC;
 
         gettimeofday(&now, NULL);
         timersub(&now, &ACKtimeout, &diff_time);
-        if(diff_time.tv_sec + (diff_time.tv_usec / 1000000.0) >1.8 ){
+
+        /*Todo ACK TimeOut*/
+
+        if(diff_time.tv_sec >= 1 || (diff_time.tv_sec==0 && diff_time.tv_usec > ACK_T_USEC) ) {
             echo_hdr->cack = C_ack;
-            echo_hdr->nack[0] = C_ack+1;
-            for(int i = 1;i<NACK_SIZE;i++){echo_hdr->nack[i] = -1;}
+            echo_hdr->nack[0] = C_ack + 1;
+            for (int i = 1; i < NACK_SIZE; i++) { echo_hdr->nack[i] = -1; }
             sendto_dbg(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
-                           (struct sockaddr *) &from_addr,
-                           sizeof(from_addr));
-            gettimeofday(&ACKtimeout,NULL);
+                       (struct sockaddr *) &from_addr,
+                       sizeof(from_addr));
+            gettimeofday(&ACKtimeout, NULL);
         }
 
         /* Wait for message or timeout */
         num = select(FD_SETSIZE, &mask, NULL, NULL, &timeout);
-
         if (num > 0)
         {
             if (FD_ISSET(sock, &mask)) {
@@ -164,7 +165,7 @@ int main(int argc, char *argv[])
                             lastACK = C_ack ;
                             NACKTime = 0;
 
-                            totalbytes += 8*(sizeof(mess_buf)-sizeof(uhdr));
+                            totalbytes += (sizeof(mess_buf)-sizeof(uhdr)-1);
                             if(totalbytes > TMB){
                                 totalbytes = totalbytes -TMB;
                                 i_TMB++;
@@ -192,7 +193,7 @@ int main(int argc, char *argv[])
                              * Receiver :  C_ack | Expected:C_ack+1 Buffer Window:[C_ack+2, ....... C_ack+Window_size+1]
                              */
 
-                            totalbytes += 8*(sizeof(mess_buf)-sizeof(uhdr));
+                            totalbytes += (sizeof(mess_buf)-sizeof(uhdr)-1);
                             if(totalbytes > TMB){
                                 totalbytes = totalbytes -TMB;
                                 i_TMB++;
@@ -217,7 +218,7 @@ int main(int argc, char *argv[])
                                     temp_hdr = (uhdr *) window[j % WINDOW_SIZE];
                                     temp_data_buf = &window[j % WINDOW_SIZE][sizeof(uhdr)];
 
-                                    totalbytes += 8*(sizeof(mess_buf)-sizeof(uhdr));
+                                    totalbytes += (sizeof(mess_buf)-sizeof(uhdr)-1);
                                     if(totalbytes > TMB){
                                         totalbytes = totalbytes- TMB;
                                         i_TMB++;
