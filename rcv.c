@@ -93,14 +93,14 @@ int main(int argc, char *argv[])
     {
         /* (Re)set mask and timeout */
         mask = read_mask;
-        timeout.tv_sec =  0;
-        timeout.tv_usec = 1000000;
+        timeout.tv_sec =  RCV_T_SEC;
+        timeout.tv_usec = RCV_T_USEC;
 
         /* Todo ACK TimeOut */
         if(hassender) {
             gettimeofday(&now, NULL);
             timersub(&now, &ACKtimeout, &diff_time);
-            if (diff_time.tv_sec >= 1 || (diff_time.tv_sec == 0 && diff_time.tv_usec > 2000000)) {
+            if (diff_time.tv_sec >= 1 || (diff_time.tv_sec == 0 && diff_time.tv_usec > ACK_T_USEC)) {
                 echo_hdr->cack = C_ack;
                 echo_hdr->nack[0] = C_ack + 1;
                 for (int i = 1; i < NACK_SIZE; i++) { echo_hdr->nack[i] = -1; }
@@ -129,16 +129,28 @@ int main(int argc, char *argv[])
                 if(!hassender){
                     /* Get the filename and record the initial time*/
                     /* Echo back with C_ack = 0 */
-                    currentip = from_ip;
-                    currenthost = from_host;
-                    if ((fw = fopen(data_buf, "w")) == NULL) {
-                        perror("fopen");
-                        exit(0);
+                    if(hdr->seq == 0) {
+                        puts(data_buf);
+                        currentip = from_ip;
+                        currenthost = from_host;
+                        if ((fw = fopen(data_buf, "w")) == NULL) {
+                            perror("fopen");
+                            exit(0);
+                        }
+                        gettimeofday(&initialtime, NULL);
+                        echo_hdr->cack = 0;
+                        sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0,
+                               (struct sockaddr *) &from_addr, sizeof(from_addr));
+                        /* Re-assign everything */
+                        hassender = 1;
+                        C_ack = 0;
+                        lastACK = -1;
+                        NACKTime =0;
+                        buffersize = 0;
+                        memset(buffer,0,sizeof (buffer));
+                        totalbytes = 0;
+                        i_TMB = 0;
                     }
-                    gettimeofday(&initialtime, NULL);
-                    hassender = 1;
-                    echo_hdr->cack = 0;
-                    sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0, (struct sockaddr *) &from_addr, sizeof(from_addr));
                 }else {
                     /* If we already connected to a sender, then we check whether it is the current connect sender */
                     if (currentip != from_ip || currenthost != from_host) {
