@@ -80,13 +80,7 @@ int main(int argc, char *argv[])
 /* Read commandline arguments */
 static void Usage(int argc, char *argv[]) {
     if (argc != 3){
-        
-        
-        
-        
-        
-        
-        ("Usage: t_ncp <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
+        printf("Usage: t_ncp <source_file_name> <dest_file_name>@<ip_address>:<port>\n");
         exit(0);
     }
     Source_file_name = argv[1];
