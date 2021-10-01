@@ -11,7 +11,7 @@ static int Port;
 static char *Receiver_IP;
 
 // Sender Process
-int main(int argc, char **argv) { /* udp related */
+int main(int argc, char **argv) { 
     struct sockaddr_in send_addr;
     struct sockaddr_in from_addr;
     socklen_t from_len;
@@ -102,7 +102,6 @@ int main(int argc, char **argv) { /* udp related */
                 if(hdr->cack == 0){
                     filename_send = 1;
                 }
-                printf("CACK :%d\n",hdr->cack);
             }
         }
         gettimeofday(&finishtime, NULL);
@@ -168,7 +167,7 @@ int main(int argc, char **argv) { /* udp related */
                 printf("Head %d, Tail %d \n",head,tail); // Todo
                 printf("Response ACK %d \n",hdr->cack); //Todo
 
-                /* Check whether we finish sending the file*/
+                /* Check whether we finish sending the file */
                 if (eof == 1 && (hdr->cack >= tail || head >= tail)) {
                     printf("Finish Sending the file ....\n");
                     hdr->seq = -1;
@@ -238,7 +237,7 @@ int main(int argc, char **argv) { /* udp related */
                                 printf("Total data I send so far : %lf MB\n",(totalbyte/1000000.0)+i_TMB*10);
                                 printf("Average Sending Rate: %lf MB per s\n", 10 / (diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
                             }
-                            
+
                             // Check whether Read the end of the file
                             if (bytes < sizeof(mess_buf) - sizeof(uhdr)-1) {
                                 printf("Finished Reading .\n");

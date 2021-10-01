@@ -50,7 +50,6 @@ int main(int argc, char *argv[])
     char  window[WINDOW_SIZE][MAX_MESS_LEN];
 
     int C_ack = 0;
-    /* If we do not Todo */
     int lastACK = -1;
     int NACKTime =0;
 
@@ -96,7 +95,9 @@ int main(int argc, char *argv[])
         timeout.tv_sec =  RCV_T_SEC;
         timeout.tv_usec = RCV_T_USEC;
 
-        /* Todo ACK TimeOut */
+        /* Define a specific timer for expected packet with index ACK+1
+         * When time out, receiver request sender for it.
+         * */
         if(hassender) {
             gettimeofday(&now, NULL);
             timersub(&now, &ACKtimeout, &diff_time);
@@ -113,7 +114,6 @@ int main(int argc, char *argv[])
 
         /* Wait for message or timeout */
         num = select(FD_SETSIZE, &mask, NULL, NULL, &timeout);
-        printf("%d %d\n",num,hassender);
         if (num > 0)
         {
             if (FD_ISSET(sock, &mask)) {
@@ -158,7 +158,6 @@ int main(int argc, char *argv[])
                         sendto(sock, echo_mess_buf, sizeof(uhdr) + strlen(echo_data_buf), 0, (struct sockaddr *) &from_addr, sizeof(from_addr));
                     }
                     else{
-                        printf("Receive %d ,C_ACK %d \n ", hdr->seq, C_ack);
                         /* If seq = -1,which means we finish Receiving from current sender */
                         if(hdr->seq == -1) {
                             hassender = 0;
@@ -170,7 +169,6 @@ int main(int argc, char *argv[])
                             printf("Total Receiving Rate: %lf MB/s", ((totalbytes/1000000.0)+10*i_TMB)/(diff_time.tv_sec + (diff_time.tv_usec / 1000000.0)));
                         }
                         else {
-                            //Todo
                             ACKtimeout.tv_usec = 0;
                             ACKtimeout.tv_sec = 0;
                             /*Case 1. Message->seq = Cumulative ACK+1
@@ -182,11 +180,8 @@ int main(int argc, char *argv[])
                                  */
                                 if (buffersize == 0) {
                                     C_ack++;
-
-                                    /*Todo*/
                                     lastACK = C_ack;
                                     NACKTime = 0;
-
                                     totalbytes += (sizeof(mess_buf) - sizeof(uhdr) - 1);
                                     if (totalbytes > TMB) {
                                         totalbytes = totalbytes - TMB;
@@ -265,10 +260,8 @@ int main(int argc, char *argv[])
                                             break;
                                         }
                                     }
-                                    /* Todo*/
                                     lastACK = C_ack;
                                     NACKTime = 0;
-
                                     /* Fill in echo header*/
                                     echo_hdr->cack = C_ack;
                                     for (int i = 0;
@@ -308,7 +301,6 @@ int main(int argc, char *argv[])
                                         /* Store message in window */
                                         memcpy(window[hdr->seq % WINDOW_SIZE], mess_buf, sizeof(mess_buf));
 
-                                        /* Todo*/
                                         if (lastACK != C_ack || (lastACK == C_ack && NACKTime < 2)) {
                                             if (lastACK == C_ack) {
                                                 NACKTime++;
@@ -348,8 +340,7 @@ int main(int argc, char *argv[])
             }
         }
         else
-        {          
-            // printf("timeout...nothing received for 100 microseconds.\n");
+        {
             gettimeofday(&now, NULL);
             if (Cmp_time(last_recv_time, Zero_time) > 0)
             {
