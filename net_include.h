@@ -15,8 +15,8 @@
 #include<sys/stat.h>
 #include <errno.h>
 
-#define MAX_MESS_LEN 3000
-#define WINDOW_SIZE 100
+#define MAX_MESS_LEN 4000
+#define WINDOW_SIZE 200
 #define NACK_SIZE 3
 #define TMB 10000000
 #define NCP_T_SEC 0
