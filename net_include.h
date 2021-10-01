@@ -23,7 +23,7 @@
 #define NCP_T_USEC 1000000
 #define RCV_T_SEC 0
 #define RCV_T_USEC 1000000
-#define ACK_T_USEC 500000
+#define ACK_T_USEC 2000000
 
 /* Only used in udp_server_hdr.c / udp_client_hdr.c to give an example of how
  * to include header data in our messages. Note that technically we should only

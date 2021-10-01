@@ -32,14 +32,14 @@ int main(int argc, char **argv) { /* udp related */
     uhdr *hdr = (uhdr *) mess_buf;
     char *data_buf = &mess_buf[sizeof(uhdr)];
 
-    int seq;
+    int seq = 0; // seq: index of message packet
     struct timeval last_recv_time = {0, 0};
     struct timeval nowtime = {0, 0};
     struct timeval timeout;
     struct timeval TMBtime ;
     struct  timeval now;
-    struct timeval initialtime = {0,0};
-    struct  timeval finishtime = {0,0};
+    struct timeval initialtime ;
+    struct  timeval finishtime ;
     struct timeval diff_time;
     char window[WINDOW_SIZE][MAX_MESS_LEN];
     int head = 1;
@@ -69,7 +69,6 @@ int main(int argc, char **argv) { /* udp related */
     send_addr.sin_port = htons(Port);
 
     printf("Opened %s for reading...\n", argv[1]);
-
     /* Set up mask for file descriptors we want to read from */
     int fd = open(Source_file_name, O_RDONLY | O_CREAT);
     gettimeofday(&initialtime, NULL);
@@ -78,22 +77,47 @@ int main(int argc, char **argv) { /* udp related */
     FD_SET(sock, &read_mask);
     FD_SET(fd,&read_mask);
 
-    /* 0： have not transmitted the filename to receiver
-     * 1:  Already transmitted the filename to receiver
-     * */
-    int filename_send = 0;
-
-    seq = 0; // seq: index of message packet
-
     int eof = 0; /* 0:Does not reach the end of file 1: Read the end of file */
 
-    /* Initialization : First send the file name
-     * Secondly, Read data from file and fill in the Window ,then send the whole window */
+    /* Connection part, sender will send filename every one second,
+     * If sender receive ack = 0 then filename have been successfully sent
+     * otherwise, receiver is busying with other sender. Sender has to wait until sender is free
+     * */
+    /* 0：have not transmitted the filename to receiver. 1:Already transmitted the filename to receiver */
+    int filename_send = 0;
     strcpy(data_buf, Dest_file_name);
-    hdr->seq = seq++;
-    sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
-           (struct sockaddr *) &send_addr, sizeof(send_addr));
+    gettimeofday(&initialtime, NULL);
+    while(!filename_send) {
+        mask = read_mask;
+        num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
+        if(num>0){
+            if (FD_ISSET(sock, &mask)) {
+                from_len = sizeof(from_addr);
+                bytes = recvfrom(sock, mess_buf, sizeof(mess_buf), 0,
+                                 (struct sockaddr *) &from_addr,
+                                 &from_len);
+                if(hdr->cack == -1){
+                    puts("Receiver is handing other sender !\n");
+                }
+                if(hdr->cack == 0){
+                    filename_send = 1;
+                }
+                printf("CACK :%d\n",hdr->cack);
+            }
+        }
+        gettimeofday(&finishtime, NULL);
+        timersub(&finishtime, &initialtime, &diff_time);
+        if(diff_time.tv_usec >= 1){
+            hdr->seq = seq;
+            sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+                   (struct sockaddr *) &send_addr, sizeof(send_addr));
+            gettimeofday(&initialtime, NULL);
+        }
+    }
+    gettimeofday(&initialtime, NULL);
+    seq++;
 
+    /* Initialization  Read data from file and fill in the Window ,then send the whole window */
     for (int i = head; i <= tail; i++) {
         bytes = read(fd, data_buf, sizeof(mess_buf) - sizeof(uhdr)-1);
         data_buf[bytes] = '\0';
@@ -123,12 +147,11 @@ int main(int argc, char **argv) { /* udp related */
     }
 
     for (;;) {
-
         /* (Re)set mask and timeout */
         mask = read_mask;
 
-        timeout.tv_sec = NCP_T_SEC;
-        timeout.tv_usec = NCP_T_USEC;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 1000000;
 
         /* Wait for message or timeout */
         num = select(FD_SETSIZE, &mask, NULL, NULL, &timeout);
@@ -148,6 +171,9 @@ int main(int argc, char **argv) { /* udp related */
                 /* Check whether we finish sending the file*/
                 if (eof == 1 && (hdr->cack >= tail || head >= tail)) {
                     printf("Finish Sending the file ....\n");
+                    hdr->seq = -1;
+                    sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+                               (struct sockaddr *) &send_addr, sizeof(send_addr));
                     gettimeofday(&finishtime, NULL);
                     timersub(&finishtime, &initialtime, &diff_time);
                     printf("Sending time  %lf s.\n",
@@ -245,6 +271,9 @@ int main(int argc, char **argv) { /* udp related */
             /* No Response From Receiver */
             if (head == tail) {
                 printf("Finish Sending the file ....\n");
+                hdr->seq = -1;
+                sendto(sock, mess_buf, sizeof(uhdr) + strlen(data_buf), 0,
+                           (struct sockaddr *) &send_addr, sizeof(send_addr));
                 gettimeofday(&finishtime, NULL);
                 timersub(&finishtime, &initialtime, &diff_time);
                 printf("Sending time  %lf s.\n",
