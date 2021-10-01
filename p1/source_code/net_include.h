@@ -15,10 +15,16 @@
 #include<sys/stat.h>
 #include <errno.h>
 
-#define MAX_MESS_LEN 2000
+#define MAX_MESS_LEN 3000
 #define WINDOW_SIZE 100
 #define NACK_SIZE 3
 #define TMB 10000000
+#define NCP_T_SEC 0
+#define NCP_T_USEC 1000000
+#define RCV_T_SEC 0
+#define RCV_T_USEC 1000000
+#define ACK_T_USEC 500000
+
 /* Only used in udp_server_hdr.c / udp_client_hdr.c to give an example of how
  * to include header data in our messages. Note that technically we should only
  * use fixed-width types in the header to ensure the header size is the same on
