@@ -10,3 +10,5 @@
 !Makefile
 #py
 !*.py
+# report
+!*.pdf
