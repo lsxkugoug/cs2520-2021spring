@@ -39,7 +39,7 @@ typedef struct dummy_uhdr {
     struct timeval N_Send_TS;    /*Resending time of packet(Response to NACK)*/
     struct timeval Receive_TS1;  /*First time receiver receives the packet*/
     struct timeval ACKACK_TS;    /*The time when sender gets the ACK and send ACKACK*/
-    int LatencyWindow;
+    struct timeval LatencyWindow;
 
     int     WindowSize;           /* Use for Sender initial its*/
     struct timeval Halfrtt;       /*Measure of RTT*/
