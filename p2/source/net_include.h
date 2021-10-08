@@ -14,12 +14,13 @@
 #include<sys/stat.h>
 #include <errno.h>
 
-#define MAX_MESS_LEN 1500
+#define WINDOW_SIZE 100
+#define MAX_MESS_LEN 1300
 #define NACK_SIZE 3
 #define RECORD_SIZE 50
 #define TMB 10000000
 
-typedef struct dummy_uhdr {
+typedef struct srt_pkt {
     /* 0->Sender sends data to Receiver
      * 1->Sender sends ACKACK to Receiver
      * 2->Receiver sends ACK to Sender.
@@ -43,5 +44,13 @@ typedef struct dummy_uhdr {
 
     int     WindowSize;           /* Use for Sender initial its*/
     struct timeval Halfrtt;       /*Measure of RTT*/
-
+    char data[MAX_MESS_LEN];
 } uhdr;
+
+
+struct stream_pkt {
+    int32_t seq;
+    int32_t ts_sec;
+    int32_t ts_usec;
+    char data[MAX_MESS_LEN];
+};
