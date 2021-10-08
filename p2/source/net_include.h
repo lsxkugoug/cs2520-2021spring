@@ -14,7 +14,7 @@
 #include<sys/stat.h>
 #include <errno.h>
 
-#define WINDOW_SIZE 100
+
 #define MAX_MESS_LEN 1300
 #define NACK_SIZE 3
 #define RECORD_SIZE 50
@@ -41,7 +41,7 @@ typedef struct srt_pkt {
     struct timeval Receive_TS1;  /*First time receiver receives the packet*/
     struct timeval ACKACK_TS;    /*The time when sender gets the ACK and send ACKACK*/
     struct timeval LatencyWindow;
-
+    
     int     WindowSize;           /* Use for Sender initial its*/
     struct timeval Halfrtt;       /*Measure of RTT*/
     char data[MAX_MESS_LEN];
