@@ -45,7 +45,7 @@ typedef struct srt_pkt {
     int     WindowSize;           /* Use for Sender initial its*/
     struct timeval Halfrtt;       /*Measure of RTT*/
     char data[MAX_MESS_LEN];
-} uhdr;
+} srt;
 
 
 struct stream_pkt {
@@ -53,4 +53,4 @@ struct stream_pkt {
     int32_t ts_sec;
     int32_t ts_usec;
     char data[MAX_MESS_LEN];
-};
+} stream;
