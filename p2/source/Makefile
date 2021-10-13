@@ -21,6 +21,7 @@ clean:
 	rm udp_stream
 	rm udp_stream_rcv
 	rm rt_rcv
+	rm rt_srv
 
 %.o:    %.c
 	$(CC) $(CFLAGS) $*.c

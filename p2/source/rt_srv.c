@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
     int head = 0;     /* head: index of the first element in the window*/
     int tail = 0;     /* tail: index of the last element in the window*/
-    struct timeval Halfrtt = {30, 0};            /* initial 1/2 RTT */
+    struct timeval Halfrtt = {0, 40};            /* initial 1/2 RTT */
     struct timeval now;
     struct timeval temp;
 
@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
     /* slide store the sum of sendTS+LatencyWindow, since they are fixed all the time*/
     struct package *window = malloc(WINDOW_SIZE * sizeof(struct package));
     struct timeval *slide = malloc(WINDOW_SIZE * sizeof(struct timeval));
-
 
     /*-------------------------------Main Part-----------------------------*/
     /* Listen messages from local app, Send message to Receiver and Response to Receiver */
