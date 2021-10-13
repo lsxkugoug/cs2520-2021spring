@@ -112,10 +112,12 @@ int main(int argc, char *argv[]) {
                 bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, (struct sockaddr *) &app_addr, app_len);
                 tail++;
                 /* Send package to receiver */
-                memcpy(rcv_pkt.data, app_pkt.data, sizeof(app_pkt.data));
+                memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
                 rcv_pkt.seq = seq++;
+                rcv_pkt.N_Send_TS.tv_sec = -1;
+                rcv_pkt.N_Send_TS.tv_usec = -1;
                 sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
                 /*Store data into window*/
                 memcpy(&window[tail % WINDOW_SIZE], &rcv_pkt, sizeof(rcv_pkt));
@@ -145,9 +147,9 @@ int main(int argc, char *argv[]) {
                         if (lossSeq != -1 && lossSeq >= head && lossSeq <= tail) {
                             gettimeofday(&now, NULL);
                             /* check time */
-                            struct timeval checkTm = {now.tv_sec + Halfrtt.tv_sec, now.tv_usec + Halfrtt.tv_usec};
+                            timeradd(&Halfrtt,&now,&temp);
                             /* sendTS+LatencyWindow -1/2RTT >=now */
-                            if (Cmp_time(slide[lossSeq % WINDOW_SIZE], checkTm) > -1) {
+                            if (Cmp_time(slide[lossSeq % WINDOW_SIZE], temp) > -1) {
                                 memcpy(&rcv_pkt, &window[lossSeq % WINDOW_SIZE], sizeof(rcv_pkt));
                                 rcv_pkt.type = 6;
                                 gettimeofday(&rcv_pkt.N_Send_TS, NULL);
@@ -184,13 +186,8 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
     return 0;
-
 }
-
-
-
 static void Usage(int argc, char *argv[]){
     if (argc != 4){Print_help();}
     Loss_rate = atoi(argv[1]);
@@ -206,8 +203,7 @@ static void Print_help(){
 }
 
 /* Returns 1 if t1 > t2, -1 if t1 < t2, 0 if equal */
-static int Cmp_time(struct timeval t1, struct timeval t2)
-{
+static int Cmp_time(struct timeval t1, struct timeval t2){
     if (t1.tv_sec > t2.tv_sec)
         return 1;
     else if (t1.tv_sec < t2.tv_sec)

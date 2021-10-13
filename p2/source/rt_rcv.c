@@ -176,8 +176,8 @@ int main(int argc, char *argv[]) {
     for(;;){
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
-        /* Stop case 1: Stop deliver when we do not have anything in window */
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE || buffersize==0 ;i++){
+            /* Stop case 1: Stop deliver when we do not have anything in window */
             /*If we miss some packets, we will still check the next packet, for example , 12 456*/
             if(buffer[i%WINDOW_SIZE]==0){continue;}
             temp_pkt = window[i%WINDOW_SIZE];
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
                     gettimeofday(&now,NULL);
                     timersub(&temp1,&now,&temp2);
                     int k = Cmp_time(temp2,Zero_time);
-                    if(k==1 || k==0 ) {
+                    if(k>-1) {
                         int32_t t1,t2,t3;
                         /* Update the baseDelta*/
                         gettimeofday(&now, NULL);
@@ -260,6 +260,7 @@ int main(int argc, char *argv[]) {
                         /* Fill in the echo message */
                         echo_pkt.type = 2;
                         timeradd(&Zero_time,&sender_pkt.Send_TS,&echo_pkt.Send_TS);
+                        timeradd(&Zero_time,&sender_pkt.N_Send_TS,&echo_pkt.N_Send_TS);
                         gettimeofday(&echo_pkt.Receive_TS1, NULL);
                         echo_pkt.seq = sender_pkt.seq;
                         echo_pkt.ack = sender_pkt.seq;
@@ -283,7 +284,7 @@ int main(int argc, char *argv[]) {
                     int32_t t1,t2,t3;
                     /* The receiver gets ACK ACK and update Base Delta and Half_RTT */
                     gettimeofday(&now,NULL);
-                    /* Base Delta */
+                    /* Update Base Delta */
                     timersub(&now,&sender_pkt.ACKACK_TS,&base_delta);
                     if(delta_i<RECORD_SIZE) {
                         delta_sec[delta_i] = base_delta.tv_sec;
@@ -306,9 +307,9 @@ int main(int argc, char *argv[]) {
                         delta_i++;
                     }
 
-                    /* Half of RTT */
+                    /* Update Half of RTT */
                     timersub(&now,&sender_pkt.Receive_TS1,&temp1);// RTT
-                    if(sender_pkt.N_Send_TS.tv_usec == NULL) {
+                    if(sender_pkt.N_Send_TS.tv_sec==-1) {
                         timersub(&sender_pkt.ACKACK_TS, &sender_pkt.Send_TS, &temp2);//RTT
                     }else{
                         timersub(&sender_pkt.ACKACK_TS, &sender_pkt.N_Send_TS, &temp2);//RTT
