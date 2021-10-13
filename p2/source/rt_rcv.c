@@ -1,4 +1,3 @@
-#include "net_include.h"
 #include "udp_stream_common.h"
 static void Usage(int argc, char *argv[]);
 static void Print_help();
@@ -35,7 +34,7 @@ int main(int argc, char *argv[]) {
     fd_set read_mask;
     int bytes;
     int num;
-    int Getpermission=0
+    int Getpermission=0;
 
     struct timeval now;
     struct timeval timer_initial;
@@ -51,11 +50,11 @@ int main(int argc, char *argv[]) {
     struct stream_pkt send_pkt;
 
     /* Packet echo back to Sender*/
-    struct str_pkt echo_pkt;
+    struct package echo_pkt;
     /* Packet from sender */
-    struct str_pkt sender_pkt;
+    struct package sender_pkt;
 
-    struct str_pkt temp_pkt;
+    struct package temp_pkt;
 
     /* Latest Record of Delta and RTT */
     int32_t delta_sec[RECORD_SIZE]={0};
@@ -69,10 +68,11 @@ int main(int argc, char *argv[]) {
 
     /*--------------Main Part of Program--------------------*/
     Usage(argc,argv);
-    /* Initialization the Latency Window */
-    struct srt_pkt *window = malloc(WINDOW_SIZE * sizeof(struct srt_pkt));
+    /* Initialization of Latency Window */
+    struct package *window = malloc(sizeof(struct package) *WINDOW_SIZE);
     int buffersize = 0;
-    int buffer[WINDOW_SIZE] = {0};
+    int buffer[WINDOW_SIZE];
+    memset(buffer,0,WINDOW_SIZE* sizeof(int));
 
     /* Open socket for receiving and delivering */
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
                     echo_pkt.Halfrtt.tv_sec =Half_RTT.tv_sec;
                     echo_pkt.Halfrtt.tv_usec = Half_RTT.tv_usec;
                     sendto_dbg(sock, (char *)&echo_pkt, sizeof(echo_pkt), 0,
-                               (struct sockaddr *) &send_addr, sizeof(send_addr));
+                               (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
                 }
                 /* Sender sends decline */
                 if(sender_pkt.type == 5){
@@ -154,12 +154,12 @@ int main(int argc, char *argv[]) {
         gettimeofday(&timer_finish,NULL);
         timersub(&timer_finish,&timer_initial,&diff_time);
         if(diff_time.tv_sec>0 || diff_time.tv_usec >= 100000000){
-            gettimeofday(&hdr->Send_TS,NULL);
-            hdr->type = 3;
-            hdr->WindowSize= WINDOW_SIZE;
-            hdr->LatencyWindow = Latency_Window;
-            sendto_dbg(sock, mess_buf, sizeof(mess_buf), 0,
-                   (struct sockaddr *) &send_addr, sizeof(send_addr));
+            gettimeofday(&echo_pkt.Send_TS,NULL);
+            echo_pkt.type = 3;
+            echo_pkt.WindowSize = WINDOW_SIZE;
+            timeradd(&Latency_Window,&Zero_time,&echo_pkt.LatencyWindow);
+            sendto_dbg(sock, (char *)&echo_pkt, sizeof(echo_pkt), 0,
+                       (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
             gettimeofday(&timer_initial, NULL);
         }
     }
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
             if(buffer[i%WINDOW_SIZE]==0){continue;}
             temp_pkt = window[i%WINDOW_SIZE];
             /* Now equal to or above sendTS+base_delta+latency window We should deliver the data */
-            timeradd(&Base_Delta, temp_pkt.Send_TS, &deliver_time);
+            timeradd(&Base_Delta, &temp_pkt.Send_TS, &deliver_time);
             timeradd(&deliver_time,&Latency_Window,&deliver_time);
             int cmp = Cmp_time(now,deliver_time);
             if(cmp ==0 || cmp==1 ){
@@ -252,7 +252,7 @@ int main(int argc, char *argv[]) {
                             delta_i++;
                         }
 
-                        /* Put received packet into window*/
+                        /* Put received packet into window */
                         memcpy(&window[sender_pkt.seq%WINDOW_SIZE],&sender_pkt,sizeof(sender_pkt));
                         buffersize++;
                         buffer[sender_pkt.seq%WINDOW_SIZE] = 1;
@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
                         echo_pkt.Halfrtt.tv_usec = Half_RTT.tv_usec;
 
                         sendto_dbg(sock, (char *)&echo_pkt, sizeof(echo_pkt), 0,
-                                   (struct sockaddr *) &send_addr, sizeof(send_addr));
+                                   (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
                     }
                 }
                 /* Case 2: Sender sends ACKACK to Receiver (Update the base_delta and halfRTT) */
@@ -360,7 +360,7 @@ static void Usage(int argc, char *argv[]){
     sendto_dbg_init(Loss_rate);
     char* delim = ":";
     ServerIP = strtok(argv[2],delim);
-    Server_Port = atoi(strtok(NULL,delim));
+    ServerPort = atoi(strtok(NULL,delim));
     AppPort = atoi(argv[3]);
     Latency_Window_time = atoi(argv[4]);
     Latency_Window.tv_sec = Latency_Window_time/1000;
@@ -389,13 +389,13 @@ static int Cmp_time(struct timeval t1, struct timeval t2)
         return 0;
 }
 
-static struct timeval Half_time(struct  timeval t){
+static struct timeval Half_time(struct  timeval t) {
     struct timeval returnval;
-    returnval.tv_sec = t.tv_sec/2;
-    if(t.tv_sec%2 ==1 ){
-        returnval.tv_usec = t.tv_usec/2+ 500000000;
-    }else{
-        returnval.tv_usec = t.tv_usec/2;
+    returnval.tv_sec = t.tv_sec / 2;
+    if (t.tv_sec % 2 == 1) {
+        returnval.tv_usec = t.tv_usec / 2 + 500000000;
+    } else {
+        returnval.tv_usec = t.tv_usec / 2;
     }
     return returnval;
 }

@@ -1,65 +1,28 @@
 CC=gcc
 
+CFLAGS = -g -c -Wall -pedantic 
 
+all: udp_stream udp_stream_rcv rt_rcv rt_srv
 
-CFLAGS = -g -c -Wall -pedantic
+udp_stream: udp_stream.o
+	    $(CC) -o udp_stream udp_stream.o
 
+udp_stream_rcv: udp_stream_rcv.o
+	    $(CC) -o udp_stream_rcv udp_stream_rcv.o
 
+rt_rcv: rt_rcv.o sendto_dbg.c
+		$(CC) -o rt_rcv rt_rcv.o sendto_dbg.c
 
-all: ncp rcv t_ncp t_rcv 
-
-
-
-ncp: ncp.o sendto_dbg.c 
-
-	    $(CC) ncp.o sendto_dbg.c  -o ncp 
-
- 
-
-rcv: rcv.o sendto_dbg.c 
-
-	    $(CC) rcv.o sendto_dbg.c -o rcv 
-
-
-
-t_ncp: t_ncp.o
-
-	    $(CC) -o t_ncp t_ncp.o
-
-
-
-t_rcv: t_rcv.o
-
-	    $(CC) -o t_rcv t_rcv.o
-
-
-
-
-
-
-
-
+rt_srv: rt_srv.o sendto_dbg.c
+		$(CC) -o rt_srv rt_srv.o sendto_dbg.c
 
 clean:
-
-	rm ncp
-
-	rm rcv
-
-	rm t_ncp
-
-	rm t_rcv
-
 	rm *.o
-
-
-
+	rm udp_stream
+	rm udp_stream_rcv
+	rm rt_rcv
 
 %.o:    %.c
-
 	$(CC) $(CFLAGS) $*.c
-
-
-
 
 
