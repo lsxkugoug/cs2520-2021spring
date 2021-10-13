@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     for(;;){
         //TODO
-        printf("Window:%d. RTT:%d,%d. Delta:%d,%d\n",WINDOW_SIZE,Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
+        printf("RTT:%ld,%d. Delta:%ld,%d\n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
@@ -186,6 +186,7 @@ int main(int argc, char *argv[]) {
             timeradd(&deliver_time,&Latency_Window,&deliver_time);
             int cmp = Cmp_time(now,deliver_time);
             if(cmp>-1 ){
+                puts(" Move !!!! ");
                 printf("Send : %d\n",temp_pkt.seq);
                 send_pkt.seq = temp_pkt.seq;
                 send_pkt.ts_sec = now.tv_sec;
@@ -204,9 +205,7 @@ int main(int argc, char *argv[]) {
 
         /* Receive packets from sender */
         mask = read_mask;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 1;
-        num = select(FD_SETSIZE, &mask, NULL, NULL, &timeout);
+        num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         if(num>0){
             if (FD_ISSET(sock, &mask)) {
                 bytes = recvfrom(sock, &sender_pkt, sizeof(sender_pkt), 0,(struct sockaddr *) &Sender_addr,&Sender_len);
@@ -283,6 +282,11 @@ int main(int argc, char *argv[]) {
                                        (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
                         }
                     }
+                    else{
+                        if(sender_pkt.seq>=C_ack+1+WINDOW_SIZE){
+                            printf("Problem %d, ACK %d\n",sender_pkt.seq,C_ack);
+                        }
+                    }
                 }
                 /* Case 2: Sender sends ACKACK to Receiver (Update the base_delta and halfRTT) */
                 if(sender_pkt.type == 1){
@@ -352,31 +356,6 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 /* Case 3: Other type of message does not make sense , just discard.*/
-            }
-        }else{
-            for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
-                /* Stop case 1: Stop deliver when we do not have anything in window */
-                /*If we miss some packets, we will still check the next packet, for example , 12 456*/
-                if(buffer[i%WINDOW_SIZE]==0){continue;}
-                temp_pkt = window[i%WINDOW_SIZE];
-                /* Now equal to or above sendTS+base_delta+latency window We should deliver the data */
-                timeradd(&Base_Delta, &temp_pkt.Send_TS, &deliver_time);
-                timeradd(&deliver_time,&Latency_Window,&deliver_time);
-                int cmp = Cmp_time(now,deliver_time);
-                if(cmp>-1 ){
-                    send_pkt.seq = temp_pkt.seq;
-                    send_pkt.ts_sec = now.tv_sec;
-                    send_pkt.ts_usec = now.tv_usec;
-                    memcpy(&send_pkt.data,&temp_pkt.data,sizeof(temp_pkt.data));
-                    sendto(sock, (char *)&send_pkt, sizeof(send_pkt), 0,
-                           (struct sockaddr *) &Localapp_addr, sizeof(Localapp_addr));
-                    buffersize--;
-                    buffer[i%WINDOW_SIZE] =0;
-                    C_ack = i;
-                }else{
-                    /*Stop case 2: Stop deliver when we meet first packet whose delivery time is behind the present time*/
-                    break;
-                }
             }
         }
     }

@@ -100,6 +100,8 @@ int main(int argc, char *argv[]) {
 
     /*-------------------------------Main Part-----------------------------*/
     /* Listen messages from local app, Send message to Receiver and Response to Receiver */
+    FD_ZERO(&read_mask);
+    FD_SET(rcv, &read_mask);
     FD_SET(app, &read_mask);
     for (;;) {
         mask = read_mask;
@@ -108,9 +110,10 @@ int main(int argc, char *argv[]) {
             /* case1, receive app's data and send to sender */
             if (FD_ISSET(app, &mask)) {
                 app_len = sizeof(app_addr);
-                bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, (struct sockaddr *) &app_addr, app_len);
+                bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, (struct sockaddr *) &app_addr,app_len);
                 tail++;
                 /* Send package to receiver */
+                printf("%d\n",app_pkt.ts_sec);
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
@@ -118,10 +121,10 @@ int main(int argc, char *argv[]) {
                 rcv_pkt.N_Send_TS.tv_sec = -1;
                 rcv_pkt.N_Send_TS.tv_usec = -1;
                 sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
-                /*Store data into window*/
+                /* Store data into window */
                 memcpy(&window[tail % WINDOW_SIZE], &rcv_pkt, sizeof(rcv_pkt));
                 if (tail - head == WINDOW_SIZE) { head++; }
-                /*Store sendTS + LatencyWindow into slide*/
+                /* Store sendTS + LatencyWindow into slide */
                 timeradd(&rcv_pkt.Send_TS, &latencyWindow, &slide[tail % WINDOW_SIZE]);
             }
 
@@ -129,7 +132,6 @@ int main(int argc, char *argv[]) {
             if (FD_ISSET(rcv, &mask)) {
                 rcv_len = sizeof(rcv_addr);
                 bytes = recvfrom(rcv, &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, &rcv_len);
-
                 /* Receiver sends ACK (nack, updated RTT)*/
                 if (rcv_pkt.type == 2) {
                     /* update 1/2 rtt */
