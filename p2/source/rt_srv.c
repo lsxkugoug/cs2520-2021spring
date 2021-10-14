@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     fd_set mask;
 
     int seq = 1;                                /* Sequence number of packets */
+    int lossSeq;
     int Request = 0;
     int bytes;
 
@@ -110,10 +111,10 @@ int main(int argc, char *argv[]) {
             /* case1, receive app's data and send to sender */
             if (FD_ISSET(app, &mask)) {
                 app_len = sizeof(app_addr);
-                bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, (struct sockaddr *) &app_addr,app_len);
+                bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, NULL,NULL);
+                if(bytes<=0){ printf("Error receiving!"); exit(1); }
                 tail++;
                 /* Send package to receiver */
-                printf("%d \n",seq);
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
@@ -143,7 +144,7 @@ int main(int argc, char *argv[]) {
                                sizeof(rcv_addr));
                     /* resend loss package */
                     for (int i = 0; i < NACK_SIZE; i++) {
-                        int lossSeq = rcv_pkt.nack[i];
+                        lossSeq= rcv_pkt.nack[i];
                         /* process NACK*/
                         if (lossSeq != -1 && lossSeq >= head && lossSeq <= tail) {
                             gettimeofday(&now, NULL);
@@ -182,7 +183,6 @@ int main(int argc, char *argv[]) {
             timeradd(&slide[i % WINDOW_SIZE], &Halfrtt, &temp);
             if (Cmp_time(now, temp) > -1) {
                 head++;
-                puts("Move");
             } else {
                 break;
             }

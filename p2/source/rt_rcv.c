@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
                     echo_pkt.seq = sender_pkt.seq;
                     echo_pkt.ack = sender_pkt.seq;
                     for(int i = 0;i<NACK_SIZE;i++){echo_pkt.nack[i] = -1;}
-                    echo_pkt.Halfrtt.tv_sec =Half_RTT.tv_sec;
+                    echo_pkt.Halfrtt.tv_sec = Half_RTT.tv_sec;
                     echo_pkt.Halfrtt.tv_usec = Half_RTT.tv_usec;
                     sendto_dbg(sock, (char *)&echo_pkt, sizeof(echo_pkt), 0,
                                (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     for(;;){
         //TODO
-        printf("RTT:%ld,%d. Delta:%ld,%d\n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
+        printf("ACK: %d RTT:%ld,%d. Delta:%ld,%d\n",C_ack,Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
@@ -192,8 +192,7 @@ int main(int argc, char *argv[]) {
                 send_pkt.ts_sec = now.tv_sec;
                 send_pkt.ts_usec = now.tv_usec;
                 memcpy(&send_pkt.data,&temp_pkt.data,sizeof(temp_pkt.data));
-                sendto(sock, (char *)&send_pkt, sizeof(send_pkt), 0,
-                       (struct sockaddr *) &Localapp_addr, sizeof(Localapp_addr));
+                sendto(sock, (char *)&send_pkt, sizeof(send_pkt), 0, (struct sockaddr *) &Localapp_addr, sizeof(Localapp_addr));
                 buffersize--;
                 buffer[i%WINDOW_SIZE] =0;
                 C_ack = i;
@@ -282,11 +281,6 @@ int main(int argc, char *argv[]) {
                                        (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
                         }
                     }
-                    else{
-                        if(sender_pkt.seq>=C_ack+1+WINDOW_SIZE){
-                            printf("Problem %d, ACK %d\n",sender_pkt.seq,C_ack);
-                        }
-                    }
                 }
                 /* Case 2: Sender sends ACKACK to Receiver (Update the base_delta and halfRTT) */
                 if(sender_pkt.type == 1){
@@ -361,7 +355,6 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-
 
 static void Usage(int argc, char *argv[]){
     if (argc != 5){Print_help();}
