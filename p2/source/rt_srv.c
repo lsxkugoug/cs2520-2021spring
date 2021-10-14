@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     int WINDOW_SIZE;
     struct timeval latencyWindow;
 
-    int head = 0;     /* head: index of the first element in the window*/
+    int head = 1;     /* head: index of the first element in the window*/
     int tail = 0;     /* tail: index of the last element in the window*/
     struct timeval Halfrtt = {0, 40};            /* initial 1/2 RTT */
     struct timeval now;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
                 bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, (struct sockaddr *) &app_addr,app_len);
                 tail++;
                 /* Send package to receiver */
-                printf("%d\n",app_pkt.ts_sec);
+                printf("%d \n",seq);
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
@@ -178,10 +178,11 @@ int main(int argc, char *argv[]) {
 
         /* case3, Sliding the window based on the Condition: sendTS+1/2RTT+latencyWindow<=Sender_now */
         gettimeofday(&now, NULL);
-        for (int i = head; i <= tail && i > 0; i++) {
+        for (int i = head; i <= tail; i++) {
             timeradd(&slide[i % WINDOW_SIZE], &Halfrtt, &temp);
             if (Cmp_time(now, temp) > -1) {
                 head++;
+                puts("Move");
             } else {
                 break;
             }
