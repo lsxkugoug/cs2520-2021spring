@@ -172,8 +172,6 @@ int main(int argc, char *argv[]) {
     Localapp_addr.sin_port = htons(AppPort);
 
     for(;;){
-        //TODO
-        printf("ACK: %d RTT:%ld,%d. Delta:%ld,%d\n",C_ack,Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
@@ -186,8 +184,6 @@ int main(int argc, char *argv[]) {
             timeradd(&deliver_time,&Latency_Window,&deliver_time);
             int cmp = Cmp_time(now,deliver_time);
             if(cmp>-1 ){
-                puts(" Move !!!! ");
-                printf("Send : %d\n",temp_pkt.seq);
                 send_pkt.seq = temp_pkt.seq;
                 send_pkt.ts_sec = now.tv_sec;
                 send_pkt.ts_usec = now.tv_usec;
@@ -267,9 +263,9 @@ int main(int argc, char *argv[]) {
                             echo_pkt.seq = sender_pkt.seq;
                             echo_pkt.ack = sender_pkt.seq;
                             for (int i = 0; i < NACK_SIZE; i++) { echo_pkt.nack[i] = -1; }
-                            /* Find at most Nacksize Nacks for example 3*/
+                            /* Find at most Nacksize Nacks */
                             for (int i = C_ack + 1, j = 0; i < sender_pkt.seq && j < NACK_SIZE; i++) {
-                                if (buffer[i] == 0) {
+                                if (buffer[i%WINDOW_SIZE] == 0) {
                                     echo_pkt.nack[j] = i;
                                     j++;
                                 }
