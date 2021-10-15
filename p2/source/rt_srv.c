@@ -1,6 +1,7 @@
 #include "udp_stream_common.h"
 static void Usage(int argc, char *argv[]);
 static void Print_help();
+static const struct timeval Report_Interval = {5, 0};
 static int Cmp_time(struct timeval t1, struct timeval t2);
 static int Cmp_addr(struct sockaddr_in addr1,struct sockaddr_in addr2);
 static int Loss_rate;
@@ -29,11 +30,19 @@ int main(int argc, char *argv[]) {
     int WINDOW_SIZE;
     struct timeval latencyWindow;
 
-    int head = 1;     /* head: index of the first element in the window*/
-    int tail = 0;     /* tail: index of the last element in the window*/
-    struct timeval Halfrtt = {0, 40};            /* initial 1/2 RTT */
+    int head = 1;                            /* head: index of the first element in the window*/
+    int tail = 0;                            /* tail: index of the last element in the window*/
+    int send_count =0;
+    int total_count =0;
+    long int duration;
+    double rate;
+    struct timeval Halfrtt = {0, 1000000};
     struct timeval now;
     struct timeval temp;
+    struct timeval timeout;
+    struct timeval start_ts;
+    struct timeval next_report_time;
+    struct timeval *to_ptr;
 
 
     Usage(argc, argv);
@@ -70,6 +79,11 @@ int main(int argc, char *argv[]) {
     while (!Request) {
         /* Reset the mask */
         mask = read_mask;
+
+        /* reset timeout. only need to report if we've actually received something already */
+        if (send_count == 0) {to_ptr = NULL;}
+        else {timersub(&next_report_time, &now, &timeout); to_ptr = &timeout;}
+
         int num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         if (num > 0) {
             /* send the permission */
@@ -106,7 +120,11 @@ int main(int argc, char *argv[]) {
     FD_SET(app, &read_mask);
     for (;;) {
         mask = read_mask;
-        int num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
+        /* reset timeout. only need to report if we've actually received something already */
+        if (send_count == 0) {to_ptr = NULL;}
+        else {timersub(&next_report_time, &now, &timeout); to_ptr = &timeout;}
+
+        int num = select(FD_SETSIZE, &mask, NULL, NULL,to_ptr);
         if (num > 0) {
             /* case1, receive app's data and send to sender */
             if (FD_ISSET(app, &mask)) {
@@ -114,6 +132,13 @@ int main(int argc, char *argv[]) {
                 bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, NULL,NULL);
                 if(bytes<=0){ printf("Error receiving!"); exit(1); }
                 tail++;
+                /* If first packet, start timing */
+                if (send_count == 0) {
+                    gettimeofday(&start_ts, NULL);
+                    timeradd(&start_ts, &Report_Interval, &next_report_time);
+                }
+                send_count++;
+                total_count++;
                 /* Send package to receiver */
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
@@ -157,6 +182,7 @@ int main(int argc, char *argv[]) {
                                 gettimeofday(&rcv_pkt.N_Send_TS, NULL);
                                 sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr,
                                            sizeof(rcv_addr));
+                                total_count++;
                             }
                         }
                     }
@@ -175,6 +201,25 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
+        } else{
+            /* timeout */
+            /* calculate current rate */
+            gettimeofday(&now, NULL);
+            duration = now.tv_sec - start_ts.tv_sec;
+            duration *= 1000000;
+            duration += now.tv_usec - start_ts.tv_usec;
+            rate = MAX_DATA_LEN * send_count*8; /* bits sent so far */
+            rate = rate / duration; /* bits per usec == megabits per sec */
+
+            /* report */
+            printf("%lf sec elapsed\n", duration / 1000000.0);
+            printf("%.2f total magabytes sent,", send_count*MAX_DATA_LEN/1000000.0);
+            printf("%d total pkts sent\n", send_count);
+            printf("avg rate: %lf Mbps", rate);
+            printf("avg rate: %lf Pps\n",send_count*1000000.0/duration);
+            printf("The sequence number of the highest packet sent %d so far\n",send_count);
+            printf("The total number of retransmissions sent %d so far\n",total_count);
+            timeradd(&next_report_time, &Report_Interval, &next_report_time);
         }
 
         /* case3, Sliding the window based on the Condition: sendTS+1/2RTT+latencyWindow<=Sender_now */
@@ -190,6 +235,7 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
+
 static void Usage(int argc, char *argv[]){
     if (argc != 4){Print_help();}
     Loss_rate = atoi(argv[1]);

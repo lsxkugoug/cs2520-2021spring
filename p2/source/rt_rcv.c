@@ -4,8 +4,9 @@ static void Print_help();
 static int Cmp_time(struct timeval t1, struct timeval t2);
 static struct timeval Half_time(struct  timeval t);
 static const struct timeval Zero_time = {0, 0};
+static const struct timeval Report_Interval = {5, 0};
 static struct timeval Base_Delta ;
-static struct timeval Half_RTT = {0,40};
+static struct timeval Half_RTT = {0,1000000};
 static int Latency_Window_time ;
 static struct timeval Latency_Window;
 static int WINDOW_SIZE;
@@ -37,13 +38,17 @@ int main(int argc, char *argv[]) {
     int Getpermission=0;
 
     struct timeval now;
+    struct timeval start_ts;
     struct timeval timeout;
+    struct timeval next_report_time;
+    struct timeval *to_ptr;
     struct timeval diff_time;
     struct timeval deliver_time;
     static struct timeval base_delta ;
     static struct timeval half_rtt ;
     struct timeval temp1;
     struct timeval temp2;
+    long int duration;
 
     /* Packet to UPD*/
     struct stream_pkt send_pkt;
@@ -64,7 +69,14 @@ int main(int argc, char *argv[]) {
     int32_t rtt_i = 0;
 
     int C_ack = 0;
-
+    /* Report parameter*/
+    int rcvd_count = 0;
+    int highestseq = 0;
+    double rate;
+    double avg_oneway;
+    double max_oneway;
+    double min_oneway;
+    double oneway;
     /*--------------Main Part of Program--------------------*/
     Usage(argc,argv);
     /* Initialization of Latency Window */
@@ -129,10 +141,17 @@ int main(int argc, char *argv[]) {
                     delta_usec[delta_i] = Base_Delta.tv_usec;
                     delta_i++;
                     puts("Successfully connected with Sender!");
-                    /* Put received packet into window*/
+                    /* Put received packet into window */
                     memcpy(&window[sender_pkt.seq%WINDOW_SIZE],&sender_pkt,sizeof(sender_pkt));
                     buffersize++;
                     buffer[sender_pkt.seq%WINDOW_SIZE] = 1;
+                    /* Record */
+                    highestseq = sender_pkt.seq;
+                    if (rcvd_count == 0) {
+                        gettimeofday(&start_ts, NULL);
+                        timeradd(&start_ts, &Report_Interval, &next_report_time);
+                    }
+                    rcvd_count++;
                     /* Fill in the echo message */
                     echo_pkt.type = 2;
                     timeradd(&Zero_time,&sender_pkt.Send_TS,&echo_pkt.Send_TS);
@@ -200,7 +219,11 @@ int main(int argc, char *argv[]) {
 
         /* Receive packets from sender */
         mask = read_mask;
-        num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
+        /* reset timeout. only need to report if we've actually received something already */
+        if (rcvd_count == 0) {to_ptr = NULL;}
+        else {timersub(&next_report_time, &now, &timeout); to_ptr = &timeout;}
+
+        num = select(FD_SETSIZE, &mask, NULL, NULL, to_ptr);
         if(num>0){
             if (FD_ISSET(sock, &mask)) {
                 bytes = recvfrom(sock, &sender_pkt, sizeof(sender_pkt), 0,(struct sockaddr *) &Sender_addr,&Sender_len);
@@ -223,16 +246,34 @@ int main(int argc, char *argv[]) {
                             gettimeofday(&now, NULL);
                             gettimeofday(&sender_pkt.Receive_TS1, NULL);
                             if (sender_pkt.type == 0) {
+                                /* If first packet, start timing */
+                                if (rcvd_count == 0) {
+                                    gettimeofday(&start_ts, NULL);
+                                    timeradd(&start_ts, &Report_Interval, &next_report_time);
+                                }
+                                highestseq = sender_pkt.seq;
+                                /* Calculate oneway delay */
+                                oneway = now.tv_sec - sender_pkt.Send_TS.tv_sec;
+                                oneway *= 1000;
+                                oneway += (now.tv_usec - sender_pkt.Send_TS.tv_usec) / 1000.0;
                                 timersub(&now, &sender_pkt.Send_TS, &base_delta);
                             } else {
+                                /* Calculate oneway delay */
+                                oneway = now.tv_sec - sender_pkt.N_Send_TS.tv_sec;
+                                oneway *= 1000;
+                                oneway += (now.tv_usec - sender_pkt.N_Send_TS.tv_usec) / 1000.0;
                                 timersub(&now, &sender_pkt.N_Send_TS, &base_delta);
                             }
+                            if (oneway > max_oneway || rcvd_count == 1) {max_oneway = oneway;}
+                            if (oneway < max_oneway || rcvd_count == 1) {min_oneway = oneway;}
+                            avg_oneway= (avg_oneway*rcvd_count+oneway)/(rcvd_count+1);
+                            rcvd_count++;
                             if (delta_i < RECORD_SIZE) {
                                 delta_sec[delta_i] = base_delta.tv_sec;
                                 delta_usec[delta_i] = base_delta.tv_usec;
                                 t1 = (Base_Delta.tv_sec * delta_i + base_delta.tv_sec) / (delta_i + 1);
                                 t2 = (Base_Delta.tv_sec * delta_i + base_delta.tv_sec) - t1 * (delta_i + 1);
-                                t3 = (t2 * 1000000000 + Base_Delta.tv_usec * delta_i + base_delta.tv_usec) /
+                                t3 = (t2 * 1000000 + Base_Delta.tv_usec * delta_i + base_delta.tv_usec) /
                                      (delta_i + 1);
                                 Base_Delta.tv_sec = t1;
                                 Base_Delta.tv_usec = t3;
@@ -241,7 +282,7 @@ int main(int argc, char *argv[]) {
                             else {
                                 t1 = (base_delta.tv_sec - delta_sec[delta_i % RECORD_SIZE]) / RECORD_SIZE;
                                 t2 = (base_delta.tv_sec - delta_sec[delta_i % RECORD_SIZE]) - t1 * RECORD_SIZE;
-                                t3 = (t2 * 1000000000 + base_delta.tv_usec - delta_usec[delta_i % RECORD_SIZE]) /
+                                t3 = (t2 * 1000000 + base_delta.tv_usec - delta_usec[delta_i % RECORD_SIZE]) /
                                      RECORD_SIZE;
                                 Base_Delta.tv_sec += t1;
                                 Base_Delta.tv_usec += t3;
@@ -290,7 +331,7 @@ int main(int argc, char *argv[]) {
                         delta_usec[delta_i] = base_delta.tv_usec;
                         t1 = (Base_Delta.tv_sec*delta_i+base_delta.tv_sec)/(delta_i+1);
                         t2 = (Base_Delta.tv_sec*delta_i+base_delta.tv_sec) - t1*(delta_i+1);
-                        t3 = (t2*1000000000 + Base_Delta.tv_usec*delta_i+base_delta.tv_usec) /(delta_i+1);
+                        t3 = (t2*1000000 + Base_Delta.tv_usec*delta_i+base_delta.tv_usec) /(delta_i+1);
                         Base_Delta.tv_sec = t1;
                         Base_Delta.tv_usec = t3;
                         delta_i++;
@@ -298,7 +339,7 @@ int main(int argc, char *argv[]) {
                     else{
                         t1 = (base_delta.tv_sec - delta_sec[delta_i % RECORD_SIZE])/RECORD_SIZE;
                         t2 = (base_delta.tv_sec - delta_sec[delta_i % RECORD_SIZE]) - t1*RECORD_SIZE;
-                        t3 = (t2*1000000000 + base_delta.tv_usec - delta_usec[delta_i % RECORD_SIZE])/RECORD_SIZE;
+                        t3 = (t2*1000000 + base_delta.tv_usec - delta_usec[delta_i % RECORD_SIZE])/RECORD_SIZE;
                         Base_Delta.tv_sec += t1;
                         Base_Delta.tv_usec+= t3;
                         delta_sec[delta_i % RECORD_SIZE] = base_delta.tv_sec;
@@ -329,7 +370,7 @@ int main(int argc, char *argv[]) {
                             rtt_usec[rtt_i] = half_rtt.tv_usec;
                             t1 = (Half_RTT.tv_sec * rtt_i + half_rtt.tv_sec) / (rtt_i + 1);
                             t2 = (Half_RTT.tv_sec * rtt_i + half_rtt.tv_sec) - t1 * (rtt_i + 1);
-                            t3 = (t2 * 1000000000 + Half_RTT.tv_usec * rtt_i + half_rtt.tv_usec) / (rtt_i + 1);
+                            t3 = (t2 * 1000000 + Half_RTT.tv_usec * rtt_i + half_rtt.tv_usec) / (rtt_i + 1);
                             Half_RTT.tv_sec = t1;
                             Half_RTT.tv_usec = t3;
                             rtt_i++;
@@ -337,7 +378,7 @@ int main(int argc, char *argv[]) {
                     }else {
                         t1 = (half_rtt.tv_sec - rtt_sec[rtt_i % RECORD_SIZE]) / RECORD_SIZE;
                         t2 = (half_rtt.tv_sec - rtt_sec[rtt_i % RECORD_SIZE]) - t1 * RECORD_SIZE;
-                        t3 = (t2 * 1000000000 + half_rtt.tv_usec - rtt_usec[rtt_i % RECORD_SIZE]) / RECORD_SIZE;
+                        t3 = (t2 * 1000000 + half_rtt.tv_usec - rtt_usec[rtt_i % RECORD_SIZE]) / RECORD_SIZE;
                         Half_RTT.tv_sec += t1;
                         Half_RTT.tv_usec+= t3;
                         rtt_sec[rtt_i % RECORD_SIZE] = half_rtt.tv_sec;
@@ -347,6 +388,29 @@ int main(int argc, char *argv[]) {
                 }
                 /* Case 3: Other type of message does not make sense , just discard.*/
             }
+        }else {
+            /* timeout */
+            /* calculate current rate */
+            gettimeofday(&now, NULL);
+            duration = now.tv_sec - start_ts.tv_sec;
+            duration *= 1000000;
+            duration += now.tv_usec - start_ts.tv_usec;
+            rate = MAX_DATA_LEN * rcvd_count*8; /* bits sent so far */
+            rate = rate / duration; /* bits per usec == megabits per sec */
+
+            /* report */
+            printf("%lf sec elapsed\n", duration / 1000000.0);
+            printf("%.2f total magabytes recvd,", rcvd_count*MAX_DATA_LEN/1000000.0);
+            printf("%d total pkts recvd\n", rcvd_count);
+            printf("avg rate: %lf Mbps", rate);
+            printf("avg rate: %lf Pps\n",rcvd_count*1000000.0/duration);
+            printf("The sequence number of the highest packet received %d so far\n",highestseq);
+            printf("The sequence number of the highest packet delivered(udp receiver) %d so far\n",C_ack);
+            printf("The total number of packets lost %d\n",rcvd_count-buffersize-C_ack);
+            printf("%lf ms max oneway delay\n", max_oneway);
+            printf("%lf ms min oneway delay\n", min_oneway);
+            printf("%lf ms avg oneway delay\n\n", avg_oneway);
+            timeradd(&next_report_time, &Report_Interval, &next_report_time);
         }
     }
     return 0;
