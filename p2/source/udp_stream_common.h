@@ -19,7 +19,7 @@
 #define MAX_DATA_LEN 1300
 #define REPORT_SEC 5 /* print status every REPORT_SEC seconds */
 
-#define NACK_SIZE 3
+#define NACK_SIZE 10
 #define RECORD_SIZE 50
 #define TMB 10000000
 
