@@ -193,6 +193,7 @@ int main(int argc, char *argv[]) {
     for(;;){
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
+       printf("RTT : %ld, %d. Base Delta %ld, %d \n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
             /* Stop case 1: Stop deliver when we do not have anything in window */
             /*If we miss some packets, we will still check the next packet, for example , 12 456*/
@@ -426,7 +427,7 @@ static void Usage(int argc, char *argv[]){
     AppPort = atoi(argv[3]);
     Latency_Window_time = atoi(argv[4]);
     Latency_Window.tv_sec = Latency_Window_time/1000;
-    Latency_Window.tv_usec = (Latency_Window_time- Latency_Window.tv_sec*1000)*1000000;
+    Latency_Window.tv_usec = (Latency_Window_time- Latency_Window.tv_sec*1000)*1000;
     /*T(ns) * 2.5M bytes /s / 1400 bytes = T *2.5*10^3/ 1400 = T*25/14 */
     WINDOW_SIZE = Latency_Window_time*25/14 +100;
     printf("Receiving from %s at port %d. Deliver data to port %d\n",ServerIP,ServerPort,AppPort);
@@ -437,8 +438,7 @@ static void Print_help(){
 }
 
 /* Returns 1 if t1 > t2, -1 if t1 < t2, 0 if equal */
-static int Cmp_time(struct timeval t1, struct timeval t2)
-{
+static int Cmp_time(struct timeval t1, struct timeval t2){
     if (t1.tv_sec > t2.tv_sec)
         return 1;
     else if (t1.tv_sec < t2.tv_sec)
@@ -455,7 +455,7 @@ static struct timeval Half_time(struct  timeval t) {
     struct timeval returnval;
     returnval.tv_sec = t.tv_sec / 2;
     if (t.tv_sec % 2 == 1) {
-        returnval.tv_usec = t.tv_usec / 2 + 500000000;
+        returnval.tv_usec = t.tv_usec / 2 + 500000;
     } else {
         returnval.tv_usec = t.tv_usec / 2;
     }

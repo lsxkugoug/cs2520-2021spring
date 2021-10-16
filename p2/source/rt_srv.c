@@ -78,11 +78,6 @@ int main(int argc, char *argv[]) {
     while (!Request) {
         /* Reset the mask */
         mask = read_mask;
-
-        /* reset timeout. only need to report if we've actually received something already */
-        if (send_count == 0) {to_ptr = NULL;}
-        else {timersub(&next_report_time, &now, &timeout); to_ptr = &timeout;}
-
         int num = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         if (num > 0) {
             /* send the permission */
@@ -99,8 +94,7 @@ int main(int argc, char *argv[]) {
                     /* send the permission */
                     rcv_pkt.type = 4;
                     gettimeofday(&rcv_pkt.Receive_TS1, NULL);
-                    sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr,
-                               sizeof(rcv_addr));
+                    sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
                 }
             }
         }
