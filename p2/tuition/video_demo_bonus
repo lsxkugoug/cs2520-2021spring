@@ -1,0 +1,126 @@
+==============================================================================
+Copy the package to your GENI node-0
+==============================================================================
+(note this is a pretty big file, so may take some time)
+
+scp -i <path_to_ssh_key> video_demo.tar <your_username>@<your_geni_host>:
+
+==============================================================================
+Untar the package (on GENI node-0)
+==============================================================================
+
+tar -xvf video_demo.tar
+
+==============================================================================
+Untar and compile the code for playout (on GENI node-0)
+==============================================================================
+
+cd video_demo/multicat
+tar -xvf bitstream-1.5.tar.bz2
+tar -xvf multicat-2.3.tar.bz2
+
+cd bitstream-1.5
+make
+sudo make install
+
+cd ../multicat-2.3
+make
+
+==============================================================================
+Set up video files (on GENI node-0)
+==============================================================================
+
+cd ../../ (go back to top-level video_demo directory)
+
+./multicat/bitstream-1.5/examples/mpeg_print_pcr < yellowstone.ts
+    - Note the number that is printed out (481 for me); you'll use it in the
+      next step
+
+./multicat/multicat-2.3/ingests -p 481 yellowstone.ts 
+    - You should replace 481 with number printed out in the previous step (if
+      it's different)
+    - This should produce a file yellowstone.aux
+
+==============================================================================
+Play out the video to UDP port (on GENI node-0)
+==============================================================================
+
+./multicat/multicat-2.3/multicat -u -U yellowstone.ts 127.0.0.1:5555
+    - You can replace "5555" with whatever port you've picked for your rt_srv
+      program's <app_port>
+
+==============================================================================
+Watch the video
+==============================================================================
+
+Download and install VLC on the computer where you run your rt_rcv program.
+You can get VLC from: https://www.videolan.org/vlc/
+
+Note: if you have access to a Mac or Linux computer where you can compile your code
+and run VLC, the simplest setup is to just run rt_rcv and VLC on that computer.
+For Windows, Windows Subsystem for Linux *may* work but I haven't tested it.
+You can also run the rt_rcv and VLC in a Linux VM (e.g. using VirtualBox), but
+while having VLC play the video in a VM mostly works, the performance is pretty
+bad in my testing. A better solution if you need to use a VM (using VirtualBox)
+is to run your rt_rcv in the VM, but modify it to send to the application at
+10.0.2.2 instead of 127.0.0.1. This should send the traffic to your host
+instead of the guest VM, so you can run rt_rcv in the VM but VLC on the host.
+
+Open up VLC on your the computer where you run your receiver. 
+
+On Mac:
+In VLC, select "File->Open Network"
+Click "Open RTP/UDP Stream"
+Make sure "UDP" and "Unicast" are selected, then enter the <app_port> that your
+rt_rcv program sends to.
+Then click "Open"
+
+On Ubuntu:
+In VLC, select "Media->Open Network Stream"
+In the "Please enter a network URL" box, enter: udp://@:<app_port>  (where
+<app_port> is the port your rt_rcv listens on)
+Click "Play"
+
+The video should now start playing (assuming your rt_srv, rt_rcv and the
+multicat program are running)
+
+Note: for your local rt_rcv program to connect to your GENI node-0, you need to
+use the GENI node's public IP address as the <server_ip> parameter for your
+rt_rcv (this is NOT the 10.0.1.100 address).
+You can find the public IP address using the "ifconfig" command on your node-0 
+
+For example, on one of my nodes, I see:
+babay01@node-0:~/video_demo$ ifconfig
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 165.124.51.190  netmask 255.255.255.128  broadcast 165.124.51.255
+        inet6 fe80::b5:25ff:fe3a:f1b3  prefixlen 64  scopeid 0x20<link>
+        ether 02:b5:25:3a:f1:b3  txqueuelen 1000  (Ethernet)
+        RX packets 978384  bytes 1262452739 (1.2 GB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 894936  bytes 481189311 (481.1 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 10.0.1.100  netmask 255.255.255.0  broadcast 10.0.1.255
+        inet6 fe80::51:b6ff:fe0d:c124  prefixlen 64  scopeid 0x20<link>
+        ether 02:51:b6:0d:c1:24  txqueuelen 1000  (Ethernet)
+        RX packets 434  bytes 25580 (25.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 25015  bytes 33851702 (33.8 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 393929  bytes 505825344 (505.8 MB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 393929  bytes 505825344 (505.8 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+
+In the above output, my public IP address is 165.124.51.190 (see "inet" entry
+under "eth0" interface)
+
+Misc:
+Original NPS video link: https://www.nps.gov/media/video/view.htm%3Fid%3DA35E7E79-CDF6-74D8-26332556B9F2D5E2
