@@ -72,6 +72,8 @@ int main(int argc, char *argv[]) {
     /* Report parameter*/
     int rcvd_count = 0;
     int highestseq = 0;
+    int loss;
+    double lossrate;
     double rate;
     double avg_oneway;
     double max_oneway;
@@ -365,7 +367,8 @@ int main(int argc, char *argv[]) {
             duration += now.tv_usec - start_ts.tv_usec;
             rate = MAX_DATA_LEN * rcvd_count*8; /* bits sent so far */
             rate = rate / duration; /* bits per usec == megabits per sec */
-
+            loss = C_ack-(rcvd_count-buffersize);
+            lossrate = 1.0*100*loss /C_ack;
             /* report */
             printf("%lf sec elapsed\n", duration / 1000000.0);
             printf("%.2f total magabytes recvd,", rcvd_count*MAX_DATA_LEN/1000000.0);
@@ -374,7 +377,8 @@ int main(int argc, char *argv[]) {
             printf("avg rate: %lf Pps\n",rcvd_count*1000000.0/duration);
             printf("The sequence number of the highest packet received (froom sender) %d so far\n",highestseq);
             printf("The sequence number of the highest packet delivered(to udp receiver) %d so far\n",C_ack);
-            printf("The total number of packets lost %d\n",C_ack-(rcvd_count-buffersize));
+            printf("The total number of packets lost %d\n",loss);
+            printf("Loss rate %lf%%\n",lossrate);
             printf("%lf ms max oneway delay\n", max_oneway);
             printf("%lf ms min oneway delay\n", min_oneway);
             printf("%lf ms avg oneway delay\n\n", avg_oneway);
