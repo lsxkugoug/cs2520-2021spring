@@ -93,7 +93,9 @@ int main(int argc, char *argv[]) {
                     /* send the permission */
                     rcv_pkt.type = 4;
                     gettimeofday(&rcv_pkt.Receive_TS1, NULL);
-                    sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
+                    for(int i = 0;i<10; i++){
+                        sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
+                    }
                 }
             }
         }

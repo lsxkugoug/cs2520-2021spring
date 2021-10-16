@@ -98,6 +98,15 @@ int main(int argc, char *argv[]) {
     Sender_addr.sin_addr.s_addr = host_num;
     Sender_addr.sin_port = htons(ServerPort);
 
+    /*  Create instance of Local APP address */
+    Local_p_h_ent = gethostbyname(localIP);
+    if(Local_p_h_ent == NULL){puts("Local ip error!");exit(1);}
+    memcpy(&Local_h_ent, Local_p_h_ent, sizeof(Local_h_ent));
+    memcpy(&Local_host_num, h_ent.h_addr_list[0], sizeof(host_num));
+    Localapp_addr.sin_family = AF_INET;
+    Localapp_addr.sin_addr.s_addr = Local_host_num;
+    Localapp_addr.sin_port = htons(AppPort);
+
     /* Set up mask for sock */
     FD_ZERO(&read_mask);
     FD_SET(sock, &read_mask);
@@ -113,14 +122,20 @@ int main(int argc, char *argv[]) {
         if(num>0){
             if (FD_ISSET(sock, &mask)) {
                 Sender_len = sizeof(Sender_addr);
-                bytes = recvfrom(sock, &sender_pkt, sizeof(sender_pkt), 0,(struct sockaddr *) &Sender_addr,&Sender_len);
+                bytes = recvfrom(sock, &sender_pkt, sizeof(sender_pkt), 0, (struct sockaddr *) &Sender_addr,
+                                 &Sender_len);
+                /* Sender sends decline */
+                if (sender_pkt.type == 5) {
+                    puts(" Server is being occupied by another Client!");
+                    exit(0);
+                }
                 /* Sender sends the permission.*/
-                /* Basically, We could calculate initial RTT and Base Delta*/
-                if(sender_pkt.type == 4){
+                /* Basically, We could calculate initial RTT and Base Delta based on the record we have */
+                if (sender_pkt.type == 4) {
                     Getpermission = 1;
                     gettimeofday(&now, NULL);
                     timersub(&now, &sender_pkt.Receive_TS1, &Base_Delta);
-                    timersub(&now,&sender_pkt.Send_TS,&diff_time);
+                    timersub(&now, &sender_pkt.Send_TS, &diff_time);
                     Half_RTT = Half_time(diff_time);
                     rtt_sec[rtt_i] = Half_RTT.tv_sec;
                     rtt_usec[rtt_i] = Half_RTT.tv_usec;
@@ -129,46 +144,7 @@ int main(int argc, char *argv[]) {
                     rtt_i++;
                     delta_i++;
                     puts("Successfully connected with Sender!");
-                }
-                /* Since the sender only sends one permission, if the permission get lost, We could still
-                 * get permission when sender sends data packets sendTS get now
-                 * */
-                if(sender_pkt.type == 0){
-                    Getpermission = 1;
-                    gettimeofday(&sender_pkt.Receive_TS1, NULL);
-                    timersub(&sender_pkt.Receive_TS1,&sender_pkt.Send_TS,&Base_Delta);
-                    delta_sec[delta_i] = Base_Delta.tv_sec;
-                    delta_usec[delta_i] = Base_Delta.tv_usec;
-                    delta_i++;
-                    puts("Successfully connected with Sender!");
-                    /* Put received packet into window */
-                    memcpy(&window[sender_pkt.seq%WINDOW_SIZE],&sender_pkt,sizeof(sender_pkt));
-                    buffersize++;
-                    buffer[sender_pkt.seq%WINDOW_SIZE] = 1;
-                    /* Record */
-                    highestseq = sender_pkt.seq;
-                    if (rcvd_count == 0) {
-                        gettimeofday(&start_ts, NULL);
-                        timeradd(&start_ts, &Report_Interval, &next_report_time);
-                    }
-                    rcvd_count++;
-                    /* Fill in the echo message */
-                    echo_pkt.type = 2;
-                    timeradd(&Zero_time,&sender_pkt.Send_TS,&echo_pkt.Send_TS);
-                    timeradd(&Zero_time,&sender_pkt.N_Send_TS,&echo_pkt.N_Send_TS);
-                    gettimeofday(&echo_pkt.Receive_TS1, NULL);
-                    echo_pkt.seq = sender_pkt.seq;
-                    echo_pkt.ack = sender_pkt.seq;
-                    for(int i = 0;i<NACK_SIZE;i++){echo_pkt.nack[i] = -1;}
-                    echo_pkt.Halfrtt.tv_sec = Half_RTT.tv_sec;
-                    echo_pkt.Halfrtt.tv_usec = Half_RTT.tv_usec;
-                    sendto_dbg(sock, (char *)&echo_pkt, sizeof(echo_pkt), 0,
-                               (struct sockaddr *) &Sender_addr, sizeof(Sender_addr));
-                }
-                /* Sender sends decline */
-                if(sender_pkt.type == 5){
-                    puts(" Server is being occupied by another Client!");
-                    exit(0);
+                    break;
                 }
             }
         }else{
@@ -181,19 +157,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /*  Create instance of Local APP address */
-    Local_p_h_ent = gethostbyname(localIP);
-    if(Local_p_h_ent == NULL){puts("Local ip error!");exit(1);}
-    memcpy(&Local_h_ent, Local_p_h_ent, sizeof(Local_h_ent));
-    memcpy(&Local_host_num, h_ent.h_addr_list[0], sizeof(host_num));
-    Localapp_addr.sin_family = AF_INET;
-    Localapp_addr.sin_addr.s_addr = Local_host_num;
-    Localapp_addr.sin_port = htons(AppPort);
-
     for(;;){
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
-        printf("RTT : %ld, %d. Base Delta %ld, %d \n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
             /* Stop case 1: Stop deliver when we do not have anything in window */
             /*If we miss some packets, we will still check the next packet, for example , 12 456*/
@@ -252,7 +218,7 @@ int main(int argc, char *argv[]) {
                                     gettimeofday(&start_ts, NULL);
                                     timeradd(&start_ts, &Report_Interval, &next_report_time);
                                 }
-                                highestseq = sender_pkt.seq;
+                                if(sender_pkt.seq>highestseq){highestseq = sender_pkt.seq;}
                                 /* Calculate oneway delay */
                                 oneway = now.tv_sec - sender_pkt.Send_TS.tv_sec;
                                 oneway *= 1000;
@@ -266,7 +232,7 @@ int main(int argc, char *argv[]) {
                                 timersub(&now, &sender_pkt.N_Send_TS, &base_delta);
                             }
                             if (oneway > max_oneway || rcvd_count == 1) {max_oneway = oneway;}
-                            if (oneway < max_oneway || rcvd_count == 1) {min_oneway = oneway;}
+                            if (oneway < min_oneway || rcvd_count == 1) {min_oneway = oneway;}
                             avg_oneway= (avg_oneway*rcvd_count+oneway)/(rcvd_count+1);
                             rcvd_count++;
                             if (delta_i < RECORD_SIZE) {
@@ -389,7 +355,8 @@ int main(int argc, char *argv[]) {
                 }
                 /* Case 3: Other type of message does not make sense , just discard.*/
             }
-        }else {
+        }
+        else {
             /* timeout */
             /* calculate current rate */
             gettimeofday(&now, NULL);
