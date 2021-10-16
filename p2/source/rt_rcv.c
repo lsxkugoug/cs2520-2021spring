@@ -6,7 +6,7 @@ static struct timeval Half_time(struct  timeval t);
 static const struct timeval Zero_time = {0, 0};
 static const struct timeval Report_Interval = {5, 0};
 static struct timeval Base_Delta ;
-static struct timeval Half_RTT = {0,1000000};
+static struct timeval Half_RTT = {0,40000};
 static int Latency_Window_time ;
 static struct timeval Latency_Window;
 static int WINDOW_SIZE;
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
     for(;;){
         /*-------Look up the window,and deliver the packet on Delivery Time.-------*/
         gettimeofday(&now,NULL);
-       printf("RTT : %ld, %d. Base Delta %ld, %d \n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
+        printf("RTT : %ld, %d. Base Delta %ld, %d \n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
         for(int i = C_ack+1; i<C_ack+1+WINDOW_SIZE && buffersize>0 ;i++){
             /* Stop case 1: Stop deliver when we do not have anything in window */
             /*If we miss some packets, we will still check the next packet, for example , 12 456*/
@@ -405,9 +405,9 @@ int main(int argc, char *argv[]) {
             printf("%d total pkts recvd\n", rcvd_count);
             printf("avg rate: %lf Mbps", rate);
             printf("avg rate: %lf Pps\n",rcvd_count*1000000.0/duration);
-            printf("The sequence number of the highest packet received %d so far\n",highestseq);
-            printf("The sequence number of the highest packet delivered(udp receiver) %d so far\n",C_ack);
-            printf("The total number of packets lost %d\n",rcvd_count-buffersize-C_ack);
+            printf("The sequence number of the highest packet received (froom sender) %d so far\n",highestseq);
+            printf("The sequence number of the highest packet delivered(to udp receiver) %d so far\n",C_ack);
+            printf("The total number of packets lost %d\n",C_ack-(rcvd_count-buffersize));
             printf("%lf ms max oneway delay\n", max_oneway);
             printf("%lf ms min oneway delay\n", min_oneway);
             printf("%lf ms avg oneway delay\n\n", avg_oneway);

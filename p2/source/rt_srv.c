@@ -19,7 +19,6 @@ int main(int argc, char *argv[]) {
     fd_set read_mask;
     fd_set mask;
 
-    int seq = 1;                                /* Sequence number of packets */
     int lossSeq;
     int Request = 0;
     int bytes;
@@ -35,7 +34,7 @@ int main(int argc, char *argv[]) {
     int total_count =0;
     long int duration;
     double rate;
-    struct timeval Halfrtt = {0, 1000000};
+    struct timeval Halfrtt = {0, 40000};
     struct timeval now;
     struct timeval temp;
     struct timeval timeout;
@@ -209,7 +208,7 @@ int main(int argc, char *argv[]) {
             printf("avg rate: %lf Mbps", rate);
             printf("avg rate: %lf Pps\n",send_count*1000000.0/duration);
             printf("The sequence number of the highest packet sent %d so far\n",send_count);
-            printf("The total number of retransmissions sent %d so far\n\n",total_count);
+            printf("The total number of retransmissions sent %d so far\n\n",total_count-send_count);
             timeradd(&next_report_time, &Report_Interval, &next_report_time);
         }
 
