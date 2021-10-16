@@ -30,8 +30,7 @@ int main(int argc, char *argv[]) {
     int WINDOW_SIZE;
     struct timeval latencyWindow;
 
-    int head = 1;                            /* head: index of the first element in the window*/
-    int tail = 0;                            /* tail: index of the last element in the window*/
+    int head = 1;       /* Point to the first element of Window, Window[head, head+Windowsize-1]*/
     int send_count =0;
     int total_count =0;
     long int duration;
@@ -131,7 +130,6 @@ int main(int argc, char *argv[]) {
                 app_len = sizeof(app_addr);
                 bytes = recvfrom(app, &app_pkt, sizeof(app_pkt), 0, NULL,NULL);
                 if(bytes<=0){ printf("Error receiving!"); exit(1); }
-                tail++;
                 /* If first packet, start timing */
                 if (send_count == 0) {
                     gettimeofday(&start_ts, NULL);
@@ -143,15 +141,14 @@ int main(int argc, char *argv[]) {
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
-                rcv_pkt.seq = seq++;
+                rcv_pkt.seq = app_pkt.seq;
                 rcv_pkt.N_Send_TS.tv_sec = -1;
                 rcv_pkt.N_Send_TS.tv_usec = -1;
                 sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
                 /* Store data into window */
-                memcpy(&window[tail % WINDOW_SIZE], &rcv_pkt, sizeof(rcv_pkt));
-                if (tail - head == WINDOW_SIZE) { head++; }
+                memcpy(&window[app_pkt.seq % WINDOW_SIZE], &rcv_pkt, sizeof(rcv_pkt));
                 /* Store sendTS + LatencyWindow into slide */
-                timeradd(&rcv_pkt.Send_TS, &latencyWindow, &slide[tail % WINDOW_SIZE]);
+                timeradd(&rcv_pkt.Send_TS, &latencyWindow, &slide[app_pkt.seq % WINDOW_SIZE]);
             }
 
             /* case2, response to receiver */
@@ -171,7 +168,7 @@ int main(int argc, char *argv[]) {
                     for (int i = 0; i < NACK_SIZE; i++) {
                         lossSeq= rcv_pkt.nack[i];
                         /* process NACK*/
-                        if (lossSeq != -1 && lossSeq >= head && lossSeq <= tail) {
+                        if (lossSeq != -1 && lossSeq >= head) {
                             gettimeofday(&now, NULL);
                             /* check time */
                             timeradd(&Halfrtt,&now,&temp);
@@ -218,13 +215,13 @@ int main(int argc, char *argv[]) {
             printf("avg rate: %lf Mbps", rate);
             printf("avg rate: %lf Pps\n",send_count*1000000.0/duration);
             printf("The sequence number of the highest packet sent %d so far\n",send_count);
-            printf("The total number of retransmissions sent %d so far\n",total_count);
+            printf("The total number of retransmissions sent %d so far\n\n",total_count);
             timeradd(&next_report_time, &Report_Interval, &next_report_time);
         }
 
         /* case3, Sliding the window based on the Condition: sendTS+1/2RTT+latencyWindow<=Sender_now */
         gettimeofday(&now, NULL);
-        for (int i = head; i <= tail; i++) {
+        for (int i = head; i < head+WINDOW_SIZE; i++) {
             timeradd(&slide[i % WINDOW_SIZE], &Halfrtt, &temp);
             if (Cmp_time(now, temp) > -1) {
                 head++;

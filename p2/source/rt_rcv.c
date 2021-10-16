@@ -428,7 +428,7 @@ static void Usage(int argc, char *argv[]){
     Latency_Window.tv_sec = Latency_Window_time/1000;
     Latency_Window.tv_usec = (Latency_Window_time- Latency_Window.tv_sec*1000)*1000000;
     /*T(ns) * 2.5M bytes /s / 1400 bytes = T *2.5*10^3/ 1400 = T*25/14 */
-    WINDOW_SIZE = Latency_Window_time*25/14 +1;
+    WINDOW_SIZE = Latency_Window_time*25/14 +100;
     printf("Receiving from %s at port %d. Deliver data to port %d\n",ServerIP,ServerPort,AppPort);
 }
 static void Print_help(){
