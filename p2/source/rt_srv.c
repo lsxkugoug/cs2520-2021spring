@@ -164,9 +164,8 @@ int main(int argc, char *argv[]) {
                         if (lossSeq != -1 && lossSeq >= head) {
                             gettimeofday(&now, NULL);
                             /* check time */
-                            timeradd(&Halfrtt,&now,&temp);
-                            /* sendTS+LatencyWindow -1/2RTT >=now */
-                            if (Cmp_time(slide[lossSeq % WINDOW_SIZE], temp) > -1) {
+                            /* sendTS+LatencyWindow >=now */
+                            if (Cmp_time(slide[lossSeq % WINDOW_SIZE], now) > -1) {
                                 memcpy(&rcv_pkt, &window[lossSeq % WINDOW_SIZE], sizeof(rcv_pkt));
                                 rcv_pkt.type = 6;
                                 gettimeofday(&rcv_pkt.N_Send_TS, NULL);
