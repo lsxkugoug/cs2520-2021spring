@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
     int lossSeq;
     int Request = 0;
     int bytes;
+    //TODO
+    int seq = 1;
 
     struct stream_pkt app_pkt;
     struct package rcv_pkt;
@@ -136,7 +138,8 @@ int main(int argc, char *argv[]) {
                 memcpy(&rcv_pkt.data,&app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;
-                rcv_pkt.seq = app_pkt.seq;
+                /* TODO rcv_pkt.seq = app_pkt.seq;*/
+                rcv_pkt.seq = seq++;
                 rcv_pkt.N_Send_TS.tv_sec = -1;
                 rcv_pkt.N_Send_TS.tv_usec = -1;
                 sendto_dbg(rcv, (char *) &rcv_pkt, sizeof(rcv_pkt), 0, (struct sockaddr *) &rcv_addr, sizeof(rcv_addr));
