@@ -54,7 +54,7 @@ struct stream_pkt {
     int32_t seq;
     int32_t ts_sec;
     int32_t ts_usec;
-    char data[1300];
+    char data[MAX_DATA_LEN];
 };
 
 #endif
