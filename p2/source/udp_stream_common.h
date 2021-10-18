@@ -16,12 +16,11 @@
 #include<sys/stat.h>
 #include <errno.h>
 #define TARGET_RATE 8 /* rate to send at, in Mbps */
-#define MAX_DATA_LEN 1300
+#define MAX_DATA_LEN 1350
 #define REPORT_SEC 5 /* print status every REPORT_SEC seconds */
 
 #define NACK_SIZE 10
-#define RECORD_SIZE 50
-#define TMB 10000000
+#define RECORD_SIZE 100
 
 struct package {
     /* 0->Sender sends data to Receiver
@@ -55,7 +54,7 @@ struct stream_pkt {
     int32_t seq;
     int32_t ts_sec;
     int32_t ts_usec;
-    char data[MAX_DATA_LEN];
+    char data[1300];
 };
 
 #endif
