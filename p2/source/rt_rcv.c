@@ -146,7 +146,9 @@ int main(int argc, char *argv[]) {
                     rtt_i++;
                     delta_i++;
                     puts("Successfully connected with Sender!");
-                    break;
+                    //TODO
+                    printf("%ld,%d. %ld,%d\n",Half_RTT.tv_sec,Half_RTT.tv_usec,Base_Delta.tv_sec,Base_Delta.tv_usec);
+
                 }
             }
         }else{
@@ -175,7 +177,8 @@ int main(int argc, char *argv[]) {
                 send_pkt.seq = temp_pkt.seq;
                 send_pkt.ts_sec = now.tv_sec;
                 send_pkt.ts_usec = now.tv_usec;
-                memcpy(&send_pkt.data,&temp_pkt.data,sizeof(temp_pkt.data));
+                // TODO &&&&&&
+                memcpy(send_pkt.data,temp_pkt.data,sizeof(temp_pkt.data));
                 sendto(sock, (char *)&send_pkt, sizeof(send_pkt), 0, (struct sockaddr *) &Localapp_addr, sizeof(Localapp_addr));
                 buffersize--;
                 buffer[i%WINDOW_SIZE] =0;
