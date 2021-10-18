@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
                 }
                 send_count++;
                 total_count++;
-                /* TODO end package to receiver */
                 memcpy(rcv_pkt.data,app_pkt.data, sizeof(app_pkt.data));
                 gettimeofday(&rcv_pkt.Send_TS, NULL);
                 rcv_pkt.type = 0;

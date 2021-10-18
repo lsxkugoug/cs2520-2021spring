@@ -177,7 +177,6 @@ int main(int argc, char *argv[]) {
                 send_pkt.seq = temp_pkt.seq;
                 send_pkt.ts_sec = now.tv_sec;
                 send_pkt.ts_usec = now.tv_usec;
-                // TODO &&&&&&
                 memcpy(send_pkt.data,temp_pkt.data,sizeof(temp_pkt.data));
                 sendto(sock, (char *)&send_pkt, sizeof(send_pkt), 0, (struct sockaddr *) &Localapp_addr, sizeof(Localapp_addr));
                 buffersize--;
