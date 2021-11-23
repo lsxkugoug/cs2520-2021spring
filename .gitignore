@@ -6,6 +6,7 @@
 !*.c
 #.h
 !*.h
+!*.txt
 # makefile
 !Makefile
 #py
