@@ -1,0 +1,31 @@
+CC=gcc
+LD=gcc
+AR=/usr/bin/ar
+RANLIB=ranlib
+LEX=/usr/bin/flex
+INSTALL=/usr/bin/install -c
+SOFTLINK=ln -s
+
+prefix=/usr/local
+exec_prefix=${prefix}
+bindir=${exec_prefix}/bin
+sbindir=${exec_prefix}/sbin
+datarootdir=${prefix}/share
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+mandir=${datarootdir}/man
+mansubdir=cat
+sysconfdir=${prefix}/etc
+piddir=/var/run
+buildtoolsdir=$(top_srcdir)/buildtools
+host=x86_64-unknown-linux-gnu
+
+include_dirs=../stdutil/include ../libspread-util/include ../libspines ../daemon $(top_srcdir)/stdutil/include $(top_srcdir)/libspread-util/include $(top_srcdir)/libspines $(top_srcdir)/daemon
+link_dirs=../stdutil/lib ../libspread-util/lib ../libspines $(top_srcdir)/stdutil/lib $(top_srcdir)/libspread-util/lib $(top_srcdir)/libspines
+libs=../stdutil/lib/libstdutil.a ../libspread-util/lib/libspread-util.a ../libspines/libspines.a
+
+CFLAGS+=-g -O2 -Wall -march=native -D_REENTRANT -DNDEBUG -fPIC $(LOCAL_CFLAGS) $(addprefix -I, $(include_dirs)) 
+LDFLAGS+= $(addprefix -L, $(link_dirs))
+LIBS+=$(libs) -ldl -lrt -lm -lnsl -lpthread -lcrypto  #$(addprefix -l, $(libs))
+EXEEXT=
+WIRELESS_SUPPORT=
