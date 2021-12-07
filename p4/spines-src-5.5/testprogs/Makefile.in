@@ -48,6 +48,8 @@ g_flooder: g_flooder.o
 mcast_recv: mcast_recv.o
 	$(CC) $(LDFLAGS) -o mcast_recv mcast_recv.o $(LIBS)
 
+Availability_traffic: Availability_traffic.o
+	$(CC) $(LDFLAGS) -o availability_traffic Availability_traffic.o $(LIBS)
 clean:
 	rm -f *.o
 	rm -f $(TESTPROGS)
