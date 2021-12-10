@@ -170,12 +170,61 @@ sp_bflooder Receiver:
 - Num Loss:     14080
 - Pkt Size:     100
 - Throughput:   74.367996 kbs
-
 - Availability: 92.600000%
 - Unavailability:       7.400000%
 Printing path statistics:
 5 3 1 0 0 0 0 0 : 126473
 5 10 1 0 0 0 0 0 : 59447
+
+
+
+**targeted redundancy**
+
+不要连接 7 11 13 14
+
+ -v -P 2 -D 3 -k 6 -n 200000
+
+On receiver run: ./availability_traffic  -v -P 2 -D 3 -k 6 -n 200000
+On sender run: ./availability_traffic   -s -v -P 2 -D 3 -k 6 -a 164.67.126.54 -n 200000
+
+
+
+sp_bflooder Receiver:
+
+- Num Pkts Received:    200000 out of 200000
+
+- Num Loss:     0
+
+- Pkt Size:     100
+
+- Throughput:   80.000128 kbs
+
+- Availability: 100.000000%
+
+- Unavailability:       0.000000%
+
+  
+
+sp_bflooder Receiver:
+
+- Num Pkts Received:    199986 out of 200000
+- Num Loss:     14
+- Pkt Size:     100
+- Throughput:   79.994523 kbs
+- Availability: 100.000000%
+- Unavailability:       0.000000%
+
+
+
+sp_bflooder Receiver:
+
+- Num Pkts Received:    200000 out of 200000
+- Num Loss:     0
+- Pkt Size:     100
+- Throughput:   80.000141 kbs
+
+- Availability: 100.000000%
+- Unavailability:       0.000000%
 
 
 
