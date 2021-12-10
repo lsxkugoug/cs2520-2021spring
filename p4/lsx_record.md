@@ -179,6 +179,10 @@ Printing path statistics:
 
 
 
+targeted redundancy
+
+不要连接 7 11 13 14
+
 
 
 
