@@ -228,7 +228,24 @@ sp_bflooder Receiver:
 
 
 
+**Dynamic Two Disjoint Path**
+
+sp_bflooder Receiver:
+- Num Pkts Received:    199049 out of 200000
+- Num Loss:     951
+- Pkt Size:     100
+- Throughput:   79.619686 kbs
+- Availability: 99.449725%
+- Unavailability:       0.550275%
 
 
 
+sp_bflooder Receiver:
+- Num Pkts Received:    193610 out of 200000
+- Num Loss:     6390
+- Pkt Size:     100
+- Throughput:   77.444063 kbs
+
+- Availability: 96.698349%
+- Unavailability:       3.301651%
 

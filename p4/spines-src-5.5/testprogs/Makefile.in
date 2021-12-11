@@ -5,7 +5,7 @@ include ../Makefile.general
 VPATH=@srcdir@
 top_srcdir=@top_srcdir@
 
-TESTPROGS=latency_traffic latency_traffic sp_tflooder sp_uflooder sp_bflooder sp_xcast sp_ping sping t_flooder u_flooder g_flooder mcast_recv port2spines spines2port new_t_flooder
+TESTPROGS=latency_traffic  latency_traffic sp_tflooder sp_uflooder sp_bflooder sp_xcast sp_ping sping t_flooder u_flooder g_flooder mcast_recv port2spines spines2port new_t_flooder
 
 all: $(TESTPROGS)
 

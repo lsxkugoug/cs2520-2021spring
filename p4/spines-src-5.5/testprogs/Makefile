@@ -5,7 +5,7 @@ include ../Makefile.general
 
 top_srcdir=..
 
-TESTPROGS= availability_traffic latency_traffic sp_tflooder sp_uflooder sp_bflooder sp_xcast sp_ping sping t_flooder u_flooder g_flooder mcast_recv port2spines spines2port new_t_flooder
+TESTPROGS= availability_traffic availability_traffic_redundant latency_traffic sp_tflooder sp_uflooder sp_bflooder sp_xcast sp_ping sping t_flooder u_flooder g_flooder mcast_recv port2spines spines2port new_t_flooder
 
 all: $(TESTPROGS)
 
@@ -50,9 +50,14 @@ mcast_recv: mcast_recv.o
 	
 availability_traffic: availability_traffic.o
 	$(CC) $(LDFLAGS) -o availability_traffic availability_traffic.o $(LIBS)
+
+availability_traffic_redundant: availability_traffic_redundant.o
+	$(CC) $(LDFLAGS) -o availability_traffic_redundant availability_traffic_redundant.o $(LIBS)	
 	
 latency_traffic: latency_traffic.o
 	$(CC) $(LDFLAGS) -o latency_traffic latency_traffic.o $(LIBS)
+
+
 clean:
 	rm -f *.o
 	rm -f $(TESTPROGS)
